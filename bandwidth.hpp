@@ -76,7 +76,7 @@ void partition_bandwidth(const ThreadInfo* th, int num_threads)
 	*/
 
 	int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
-	unsigned used_bw[num_threads], new_core_bw[num_threads];
+	int used_bw[num_threads], new_core_bw[num_threads];
 
 	// Calculate bandwidth used by each thread
 	for (int i = 0; i < num_threads; i++){
