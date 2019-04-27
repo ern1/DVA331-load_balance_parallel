@@ -60,10 +60,11 @@ void set_max_bw(int max_bw)
 }
 
 // Calculate used bandwidth by using performance counters
-unsigned calculate_bandwidth(unsigned l3_misses, unsigned prefetch_misses, unsigned cache_line_size)
+inline static double calculate_bandwidth_MB(long long l3_misses, long long prefetch_misses, int cache_line_size)
 {
-	// Finns det bättre perf event att använda sig av här?
-	return (l3_misses + prefetch_misses) * cache_line_size;
+	// Är inte säker på att detta är rätt
+	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size
+	return (double)(bw_b * 1.1920928955078125e-7);
 }
 
 // Parition bandwidth between different cores
@@ -76,11 +77,11 @@ void partition_bandwidth(const ThreadInfo* th, int num_threads)
 	*/
 
 	int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
-	int used_bw[num_threads], new_core_bw[num_threads];
+	double used_bw[num_threads], new_core_bw[num_threads];
 
 	// Calculate bandwidth used by each thread
 	for (int i = 0; i < num_threads; i++){
-		used_bw[i] = calculate_bandwidth(th->l3_misses, th->prefetch_misses, cache_line_size);
+		used_bw[i] = calculate_bandwidth_MB(th->l3_misses, th->prefetch_misses, cache_line_size);
 	}
 
 	// Calculate how to partition bandwidth between different cores
