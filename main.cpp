@@ -60,7 +60,7 @@ void* feature_thread(void* threadArg)
 
 	// 
 	long long values[2];
-	int event_set = PAPI_NULL;
+	int event_set = PAPI_NULL; // Kan flytta denna till perfCounters.hpp (gör global och thread_local)
 	start_PAPI(&event_set);
 
 	// Start timer
