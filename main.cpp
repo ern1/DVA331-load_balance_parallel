@@ -80,9 +80,9 @@ void* feature_thread(void* threadArg)
 	roi[thread_info->core_id] = frame(roi_rect);
 	std::vector<cv::KeyPoint> keypoints;
 
-	//cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
+	cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
 	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(800);
-	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
+	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 
@@ -104,8 +104,10 @@ int main(int argc, char** argv)
 	void* status;
 
 	init_PAPI();
-	cv::VideoCapture cap("drone.mp4");
+	cv::VideoCapture cap(argv[2]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
+	//cv::namedWindow("Video", cv::WINDOW_NORMAL);
+	//cv::resizeWindow("Video", 1920, 1080);
 
 	// Check if camera opened successfully
 	if(!cap.isOpened()) {
@@ -163,7 +165,9 @@ int main(int argc, char** argv)
 		// Print stats
 		double fps = cv::getTickFrequency() / (cv::getTickCount() - start);
 		print_thread_info(thread_info, num_threads);
-		std::cout << "FPS: " << fps << '\n' << '\n';
+		std::cout << "FPS: " << fps << "\n\n";
+
+		partition_bandwidth(thread_info, num_threads);
 	}
 
 	cap.release();

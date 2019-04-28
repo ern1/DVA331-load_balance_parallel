@@ -1,0 +1,16 @@
+{
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "g++ build active file",
+      "command": "g++ ${file} -pthread -o ${fileDirname}/${fileBasenameNoExtension} -lrt -O0 -fpermissive -std=c++11 `pkg-config --cflags --libs opencv` /usr/local/lib/libpapi.a -pthread",
+      "args": [
+
+      ],
+      "options": {
+        "cwd": "/usr/bin"
+      }
+    }
+  ],
+  "version": "2.0.0"
+}

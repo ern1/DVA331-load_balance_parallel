@@ -62,8 +62,7 @@ void set_max_bw(int max_bw)
 // Calculate used bandwidth by using performance counters
 inline static double calculate_bandwidth_MB(long long l3_misses, long long prefetch_misses, int cache_line_size)
 {
-	// Är inte säker på att detta är rätt
-	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size
+	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size;
 	return (double)(bw_b * 1.1920928955078125e-7);
 }
 
@@ -82,15 +81,17 @@ void partition_bandwidth(const ThreadInfo* th, int num_threads)
 
 	// Calculate bandwidth used by each thread
 	for (int i = 0; i < num_threads; i++){
-		used_bw[i] = calculate_bandwidth_MB(th->l3_misses, th->prefetch_misses, cache_line_size);
+		used_bw[i] = calculate_bandwidth_MB(th[i].l3_misses, th[i].prefetch_misses, cache_line_size);
+		std::cout << "Core: " << i << ", bw: " << used_bw[i] << '\n';
 	}
+	std::cout << '\n';
 
 	// Calculate how to partition bandwidth between different cores
 	// ...
 
 	// Partition bandwidth
 	//if (num_threads == 4) // Lägg till dessa om vi behöver köra med olika antal trådar.
-	assign_bw(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
+	//assign_bw(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 
 #endif
