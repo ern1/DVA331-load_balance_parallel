@@ -14,6 +14,10 @@ struct ThreadInfo {
 	double execution_time;
 	long long l3_misses;
 	long long prefetch_misses;
+  //std::vector<double> prev_used_bw;
+  double ewma_bw;
+
+  ThreadInfo() : prev_ewma_bw(0) {}
 };
 
 thread_local int retval;

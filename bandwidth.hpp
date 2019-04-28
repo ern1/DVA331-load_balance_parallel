@@ -8,7 +8,7 @@
 #include "perfCounters.hpp"
 
 #define STR_SIZE 1000
-
+#define BW_VAL_THRESHOLD 5
 // Ska vi bara göra assign-funktioner för 4 kärnor? Eller fixa andra för t.ex. 2 kärnor?
 
 // 
@@ -67,29 +67,47 @@ inline static double calculate_bandwidth_MB(long long l3_misses, long long prefe
 }
 
 // Parition bandwidth between different cores
-void partition_bandwidth(const ThreadInfo* th, int num_threads)
+void partition_bandwidth(ThreadInfo* th, int num_threads)
 {
-	/* Vad denna funktion ska göra (preliminärt):
-	** 1. Börja med att räkna ut bandbredd för varje kärna (calculate_bandwidth)
-	** 2. Räkna ut procentuella delen för varje kärna. (Blir det verkligen så enkelt?)
-	** 3. Funktionsanrop till assign_bw
-	*/
-
 	int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
-	double used_bw[num_threads];
+	double used_bw, used_ewma_bw[num_threads];
 	int new_core_bw[num_threads]; // in percent
+	int coefficent = 1;
 
-	// Calculate bandwidth used by each thread
+	/* Calculate bandwidth used by each thread */
 	for (int i = 0; i < num_threads; i++){
-		used_bw[i] = calculate_bandwidth_MB(th[i].l3_misses, th[i].prefetch_misses, cache_line_size);
-		std::cout << "Core: " << i << ", bw: " << used_bw[i] << '\n';
+		used_bw = calculate_bandwidth_MB(th[i].l3_misses, th[i].prefetch_misses, cache_line_size);
+		std::cout << "Core: " << i << ", bw: " << used_bw << '\n';
+
+		// Add current used_bw to prev_used_bw and delete oldest
+		/*th[i].prev_used_bw.push_back(used_bw);
+
+		if(th[i].prev_used_bw.size >= BW_VAL_THRESHOLD)
+			th[i].prev_used_bw.erase(th[i].prev_used_bw.begin());*/
+		
+		// Calculate EWMA (Moving Áverage BW) for each core
+		/*for(int j = th[i].prev_used_bw.size(); j > 0; j--)
+		{
+
+			if(j == 5)
+				used_ewma_bw[i] += th[i].prev_used_bw[j];
+			else
+			{
+				coefficent * th[i].prev_used_bw[j] + (1 - coefficent) * 
+			}
+		}*/
+		
+
+		// int n = th[i].runs < BW_VAL_THRESHOLD ? h[i].runs : BW_VAL_THRESHOLD;
+		// int m = 2 / (1 + n);
+		// th[i].ewma_bw = m * used_bw + (1 - m) * th[i].ewma_bw;
 	}
 	std::cout << '\n';
+	
+	/* Calculate how to partition bandwidth between different cores */
+	
 
-	// Calculate how to partition bandwidth between different cores
-	// ...
-
-	// Partition bandwidth
+	/* Partition bandwidth */
 	//if (num_threads == 4) // Lägg till dessa om vi behöver köra med olika antal trådar.
 	//assign_bw(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
