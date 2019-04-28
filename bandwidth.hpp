@@ -9,7 +9,6 @@
 
 #define STR_SIZE 1000
 #define BW_VAL_THRESHOLD 5
-// Ska vi bara göra assign-funktioner för 4 kärnor? Eller fixa andra för t.ex. 2 kärnor?
 
 // 
 void use_best_effort(bool use)
