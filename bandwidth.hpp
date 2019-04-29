@@ -18,7 +18,7 @@ void set_exclusive_mode(int mode)
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %s",
-		"sudo echo exclusive", mode, "> /sys/kernel/debug/memguard/control");
+		"echo exclusive", mode, "> /sys/kernel/debug/memguard/control");
 
 	std::cout << "----------- " << script_str << '\n';
 
@@ -35,7 +35,7 @@ void assign_bw(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
-		"sudo echo", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
+		"echo", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
 
 	int status = system(script_str);
 	if (status < 0)
@@ -50,7 +50,7 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
-		"sudo echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
+		"echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
 
 	int status = system(script_str);
 	if (status < 0)
@@ -65,7 +65,7 @@ void set_max_bw(int max_bw)
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %s",
-		"sudo echo maxbw", max_bw, "> /sys/kernel/debug/memguard/control");
+		"echo maxbw", max_bw, "> /sys/kernel/debug/memguard/control");
 
 	int status = system(script_str);
 	if (status < 0)
