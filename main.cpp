@@ -35,7 +35,6 @@ const cv::Scalar COLORS[4] = {
 	cv::Scalar(255, 0, 255)
 };
 
-// https://stackoverflow.com/questions/1407786/how-to-set-cpu-affinity-of-a-particular-pthread
 int stick_this_thread_to_core(int core_id)
 {
   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
@@ -60,8 +59,7 @@ void* feature_thread(void* threadArg)
 
 	// 
 	long long values[2];
-	int event_set = PAPI_NULL; // Kan flytta denna till perfCounters.hpp (gör global och thread_local)
-	start_PAPI(&event_set);
+	start_PAPI();
 
 	// Start timer
 	//long long unsigned start_time = time_ns();
@@ -80,25 +78,26 @@ void* feature_thread(void* threadArg)
 	roi[thread_info->core_id] = frame(roi_rect);
 	std::vector<cv::KeyPoint> keypoints;
 
-	cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
-	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(800);
+	//cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
+	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(2);
 	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 
 	// End timer
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
-	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency() * 1000;
+	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 
 	// Read performance counters
-	read_PAPI(event_set, values);
-	stop_PAPI(event_set, values);
+	read_PAPI(values);
+	stop_PAPI(values);
 	thread_info->l3_misses = values[0];
 	thread_info->prefetch_misses = values[1];
 }
 
 int main(int argc, char** argv)
 {
+	set_exclusive_mode(0);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);
 	void* status;
@@ -160,7 +159,7 @@ int main(int argc, char** argv)
 		
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
-		cv::imshow("Video", out);
+		//cv::imshow("Video", out);
 
 		// Print stats
 		double fps = cv::getTickFrequency() / (cv::getTickCount() - start);

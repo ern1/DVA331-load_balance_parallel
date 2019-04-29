@@ -11,23 +11,24 @@
 
 struct ThreadInfo {
 	int core_id;
-	double execution_time;
+	double execution_time; // in seconds
 	long long l3_misses;
 	long long prefetch_misses;
-  //std::vector<double> prev_used_bw;
-  double ewma_bw;
+  std::vector<double> prev_used_bw;
+  //double ewma_bw;
 
-  ThreadInfo() : ewma_bw(0) {}
+  //ThreadInfo() : ewma_bw(0) {}
 };
 
 thread_local int retval;
+thread_local int event_set = PAPI_NULL;
 
 inline void print_thread_info(const ThreadInfo* th, int size){
-  std::cout << std::setw(10) << "Core id" << std::setw(17) << "Execution time" << std::setw(12)
+  std::cout << std::setw(10) << "Core id" << std::setw(22) << "Execution time (ms)" << std::setw(12)
 			<< "L3 misses" << "Prefetch misses" << '\n';
 
   for (int i = 0; i < size; i++)
-    std::cout << std::setw(10) << th[i].core_id << std::setw(17) << th[i].execution_time
+    std::cout << std::setw(10) << th[i].core_id << std::setw(22) << th[i].execution_time * 1000
       << std::setw(12) << th[i].l3_misses << th[i].prefetch_misses << '\n';
 }
 
@@ -53,21 +54,21 @@ inline void init_PAPI()
 		printf("Failed to init papi thread: %s\n", PAPI_strerror(retval));
 }
 
-inline void start_PAPI(int* event_set)
+inline void start_PAPI()
 {
   int monitor_pid = syscall(SYS_gettid);
 
   if ((retval = PAPI_register_thread()) != PAPI_OK)
     printf("Failed to register thread: %s\n", PAPI_strerror(retval));
 
-  if ((retval = PAPI_create_eventset(event_set)) != PAPI_OK)
+  if ((retval = PAPI_create_eventset(&event_set)) != PAPI_OK)
     printf("Failed to create eventset: %s\n", PAPI_strerror(retval));
   
-  if ((retval = PAPI_add_event(*event_set, PAPI_L3_TCM)) != PAPI_OK) {
+  if ((retval = PAPI_add_event(event_set, PAPI_L3_TCM)) != PAPI_OK) {
     printf("Failed to attach L3 misses: %s\n", PAPI_strerror(retval));
   }
   
-  if ((retval = PAPI_add_event(*event_set, PAPI_PRF_DM)) != PAPI_OK)
+  if ((retval = PAPI_add_event(event_set, PAPI_PRF_DM)) != PAPI_OK)
     printf("Failed to attach Prefetch Cache Misses: %s\n", PAPI_strerror(retval));
 
 
@@ -86,11 +87,17 @@ inline void start_PAPI(int* event_set)
   //int native = MEM_LOAD_UOPS_L3_HIT_RETIRED | 0x01;
   //PAPI_event_info_t info;
   //int native = 0x0;
-  // int event_code;
-  // if ((retval = PAPI_event_name_to_code("perf::PERF_COUNT_HW_BUS_CYCLES", &event_code)) != PAPI_OK){
-  //   printf("nooooo0: %d\n", retval);
-  // }
-  // printf("event_code = %d\n", event_code);
+  int event_code;
+  if ((retval = PAPI_event_name_to_code("perf::PERF_COUNT_HW_BUS_CYCLES", &event_code)) != PAPI_OK){
+    printf("nooooo0: %d\n", retval);
+  }
+
+  // unsigned int native = 0xBB;
+
+  // if ((retval = PAPI_add_event(*event_set, native)) != PAPI_OK)
+  //   printf("Failed to attach Prefetch Cache Misses: %s\n", PAPI_strerror(retval));
+
+  //printf("event_code = %d\n", event_code);
   
   // if (PAPI_get_event_info(event_code, &info) != PAPI_OK) {
   //   if ((retval = PAPI_enum_event(&event_code, 0)) != PAPI_OK) 
@@ -102,23 +109,26 @@ inline void start_PAPI(int* event_set)
   /* ---------------------------------------------------- */
 
 
-  if ((retval = PAPI_attach(*event_set, monitor_pid)) != PAPI_OK)
+  if ((retval = PAPI_attach(event_set, monitor_pid)) != PAPI_OK)
     printf("Failed to attach tid to eventset: %s\n", PAPI_strerror(retval));
    
-  if ((retval = PAPI_start(*event_set)) != PAPI_OK)
+  if ((retval = PAPI_start(event_set)) != PAPI_OK)
     printf("Failed to start papi: %s\n", PAPI_strerror(retval));
 }
 
-inline void read_PAPI(int event_set, long long* values)
+inline void read_PAPI(long long* values)
 {
   if ((retval = PAPI_read(event_set, values)) != PAPI_OK)
     printf("Failed to read the events: %s\n", PAPI_strerror(retval));
 }
 
-inline void stop_PAPI(int event_set, long long* values)
+inline void stop_PAPI(long long* values)
 {
   if ((retval = PAPI_stop(event_set, values)) != PAPI_OK)
 		printf("Failed to stop the eventset: %s\n", PAPI_strerror(retval));
+
+  PAPI_cleanup_eventset(event_set);
+  PAPI_destroy_eventset(&event_set);
 
   // Kan detta behövas?
   //if ((retval = PAPI_unregister_thread()) != PAPI_OK)
