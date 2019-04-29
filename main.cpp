@@ -97,7 +97,13 @@ void* feature_thread(void* threadArg)
 
 int main(int argc, char** argv)
 {
-	set_exclusive_mode(0);
+	// chech if user is root
+	if (getuid() != geteuid()) {
+		std::cout << "User is not root" << std::endl;
+		return 0;
+	}
+	
+	//set_exclusive_mode(0);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);
 	void* status;
