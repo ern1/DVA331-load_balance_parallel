@@ -125,14 +125,13 @@ inline void read_PAPI(long long* values)
 inline void stop_PAPI(long long* values)
 {
   if ((retval = PAPI_stop(event_set, values)) != PAPI_OK)
-		printf("Failed to stop the eventset: %s\n", PAPI_strerror(retval));
+		printf("Failed to stop eventset: %s\n", PAPI_strerror(retval));
 
-  PAPI_cleanup_eventset(event_set);
-  PAPI_destroy_eventset(&event_set);
+  if ((retval = PAPI_cleanup_eventset(event_set)) != PAPI_OK)
+		printf("Failed to cleanup eventset: %s\n", PAPI_strerror(retval));
 
-  // Kan detta behövas?
-  //if ((retval = PAPI_unregister_thread()) != PAPI_OK)
-    //printf("Failed to unregister thread: %s\n", PAPI_strerror(retval));
+  if ((retval = PAPI_destroy_eventset(&event_set)) != PAPI_OK)
+		printf("Failed to destroy eventset: %s\n", PAPI_strerror(retval));
 }
 
 #endif
