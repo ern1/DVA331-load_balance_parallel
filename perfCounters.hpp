@@ -87,10 +87,10 @@ inline void start_PAPI()
   //int native = MEM_LOAD_UOPS_L3_HIT_RETIRED | 0x01;
   //PAPI_event_info_t info;
   //int native = 0x0;
-  int event_code;
-  if ((retval = PAPI_event_name_to_code("perf::PERF_COUNT_HW_BUS_CYCLES", &event_code)) != PAPI_OK){
-    printf("nooooo0: %d\n", retval);
-  }
+  // int event_code;
+  // if ((retval = PAPI_event_name_to_code("perf::PERF_COUNT_HW_BUS_CYCLES", &event_code)) != PAPI_OK){
+  //   printf("nooooo0: %d\n", retval);
+  // }
 
   // unsigned int native = 0xBB;
 

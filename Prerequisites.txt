@@ -1,0 +1,35 @@
+------------ Install OpenCV ------------: 
+(https://docs.opencv.org/3.4.5/d7/d9f/tutorial_linux_install.html)
+sudo apt-get install build-essential
+sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
+sudo apt-get install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
+
+(https://stackoverflow.com/questions/41200201/opencv-unable-to-stop-the-stream-inappropriate-ioctl-for-device)
+sudo apt-get install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libv4l-dev
+
+git clone för opencv ocv opencv-contrib från github
+cd opencv-3.4.5
+mkdir build
+cd build
+
+cmake -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_FFMPEG=ON -DWITH_TBB=ON -DWITH_GTK=ON -DWITH_V4L=ON -DWITH_OPENGL=ON -DWITH_CUBLAS=ON -DWITH_QT=OFF -DOPENCV_ENABLE_NONFREE:BOOL=ON -DOPENCV_EXTRA_MODULES_PATH='/home/tommy/Desktop/opencv_contrib/modules' '/home/tommy/Desktop/opencv-3.4.5'
+
+make -j5
+
+sudo make install
+
+sudo ldconfig -v
+
+
+------------ Install Papi ------------:
+http://icl.utk.edu/papi/software/
+
+Kan eventuellt behöva köra följande:
+sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
+
+
+------------ Prepare cgroups ------------:
+Skapa grupper:
+
+Ändra till thread mode:
+[echo threaded > cgroup.type]

@@ -1,5 +1,5 @@
-#ifndef __BANDWIDTH_HPP__
-#define __BANDWIDTH_HPP__
+#ifndef __BANDWIDTH_MEMGUARD_HPP__
+#define __BANDWIDTH_MEMGUARD_HPP__
 
 #include <stdlib.h>
 #include <string.h>
@@ -10,21 +10,36 @@
 #define STR_SIZE 1000
 #define BW_VAL_THRESHOLD 5
 
-void add_pid_to_group(int core_id, int pid){
-    //echo [pid] > /sys/fs/cgroup/memory/part_core[core_id]/cgroup.procs
-
-    if (system(NULL)) puts ("Ok");
+// use mode = 0 to disable best-effort
+void set_exclusive_mode(int mode)
+{
+	if (system(NULL)) puts ("Ok");
 		else exit (EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
+	snprintf(script_str, sizeof(script_str), "%s %d %s",
+		"echo exclusive", mode, "> /sys/kernel/debug/memguard/control");
 
-    // TODO: Gör om med cgroup
-	/*snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
-		"echo mb", ??, "> /sys/kernel/debug/memguard/limit");
+	std::cout << "----------- " << script_str << '\n';
+
 	int status = system(script_str);
-
 	if (status < 0)
-		printf("%s\n", strerror(errno));*/
+		printf("%s\n", strerror(errno));
+}
+
+// Assign bandwidth using percentages
+void assign_bw(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
+{
+	if (system(NULL)) puts ("Ok");
+		else exit (EXIT_FAILURE);
+
+	char script_str[STR_SIZE] = {0};
+	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
+		"echo", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
+
+	int status = system(script_str);
+	if (status < 0)
+		printf("%s\n", strerror(errno));
 }
 
 // Assign bandwidth by specifying bandwidth in MB
@@ -34,14 +49,27 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 		else exit (EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
-
-    // TODO: Gör om med cgroup
-	/*snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
+	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
 		"echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
-	int status = system(script_str);
 
+	int status = system(script_str);
 	if (status < 0)
-		printf("%s\n", strerror(errno));*/
+		printf("%s\n", strerror(errno));
+}
+
+// Set total bandwidth that can be partitionen between cores
+void set_max_bw(int max_bw)
+{
+	if (system(NULL)) puts ("Ok");
+		else exit (EXIT_FAILURE);
+
+	char script_str[STR_SIZE] = {0};
+	snprintf(script_str, sizeof(script_str), "%s %d %s",
+		"echo maxbw", max_bw, "> /sys/kernel/debug/memguard/control");
+
+	int status = system(script_str);
+	if (status < 0)
+		printf("%s\n", strerror(errno));
 }
 
 // Calculate used bandwidth by using performance counters

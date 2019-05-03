@@ -93,7 +93,6 @@ void* feature_thread(void* threadArg)
 	stop_PAPI(values);
 	thread_info->l3_misses = values[0];
 	thread_info->prefetch_misses = values[1];
-	std::cout << "getppid/getpid/pthread_self: " << getppid()  << "/" << getpid() << "/" << pthread_self() << " \n";
 }
 
 int main(int argc, char** argv)
