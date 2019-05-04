@@ -21,7 +21,7 @@
 #include <papi.h>
 #include <pthread.h>
 #include "perfCounters.hpp"
-#include "bandwidth.hpp"
+//#include "bandwidth.hpp"
 
 int num_threads;
 int global_width, global_height;
@@ -175,7 +175,7 @@ int main(int argc, char** argv)
 		print_thread_info(thread_info, num_threads);
 		std::cout << "FPS: " << fps << "\n\n";
 
-		partition_bandwidth(thread_info, num_threads);
+		//partition_bandwidth(thread_info, num_threads);
 	}
 
 	cap.release();

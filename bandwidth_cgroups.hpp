@@ -1,5 +1,5 @@
-#ifndef __BANDWIDTH_HPP__
-#define __BANDWIDTH_HPP__
+#ifndef __BANDWIDTH_CGROUPS_HPP__
+#define __BANDWIDTH_CGROUPS_HPP__
 
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +11,23 @@
 #define BW_VAL_THRESHOLD 5
 
 void add_pid_to_group(int core_id, int pid){
+    //echo [pid] > /sys/fs/cgroup/memory/part_core[core_id]/cgroup.procs
+
+    if (system(NULL)) puts ("Ok");
+		else exit (EXIT_FAILURE);
+
+	char script_str[STR_SIZE] = {0};
+
+    // TODO: Gör om med cgroup
+	/*snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
+		"echo mb", ??, "> /sys/kernel/debug/memguard/limit");
+	int status = system(script_str);
+
+	if (status < 0)
+		printf("%s\n", strerror(errno));*/
+}
+
+void add_tid_to_group(int thread_id, int pid){
     //echo [pid] > /sys/fs/cgroup/memory/part_core[core_id]/cgroup.procs
 
     if (system(NULL)) puts ("Ok");
