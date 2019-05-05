@@ -31,12 +31,4 @@ sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
 ------------ Prepare cgroups ------------:
 Skapa grupper:
 
-Ändra till thread mode:
-[echo threaded > cgroup.type]
-
-
-Ja, vi har tasks under memory då vi tydligen kör cgroups v1. Missförstod det, då det stod att 4.14 och uppåt kom med cgroups v2. 
-Det verkar däremot endast ligga pid:s där, och går inte att lägga till tid i den.
-
-Vi har dock börjat tveka på om det verkligen går att begränsa bandbredd med cgroups. Vi har kollat på en hel del av parametrarna i memory och cpu
-men hittar ingenting som verkar begränsa minnesbandbredden. memory.limit_in_bytes begränsar väl endast hur mycket minne som får användas av gruppen?
+[använder nog ej cgroups]

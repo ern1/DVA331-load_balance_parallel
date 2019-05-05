@@ -1,5 +1,5 @@
-#ifndef __BANDWIDTH_HPP__
-#define __BANDWIDTH_HPP__
+#ifndef __BANDWIDTH_MEMGUARD_HPP__
+#define __BANDWIDTH_MEMGUARD_HPP__
 
 #include <stdlib.h>
 #include <string.h>
@@ -100,14 +100,14 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 			th[i].prev_used_bw.erase(th[i].prev_used_bw.begin());
 		
 		// //Calculate WMA (Weighted Moving Áverage BW) for each core
-		// int tot_weight = 0;
-		// for(int j = th[i].prev_used_bw.size() - 1; j >= 0; j--)
-		// {
-		// 	// if(j == BW_VAL_THRESHOLD - 1)
-		// 	// 	used_wma_bw[i] += th[i].prev_used_bw[j];
-		// 	// else {
-		// 	// 	used_wma_bw[i] += coefficent * th[i].prev_used_bw[j] + (1 - coefficent) * th[i].prev_used_bw[j - 1];
-		// 	// }
+		int tot_weight = 0;
+		for(int j = th[i].prev_used_bw.size() - 1; j >= 0; j--)
+		{
+		 	// if(j == BW_VAL_THRESHOLD - 1)
+ 			// 	used_wma_bw[i] += th[i].prev_used_bw[j];
+		 	// else {
+		 	// 	used_wma_bw[i] += coefficent * th[i].prev_used_bw[j] + (1 - coefficent) * th[i].prev_used_bw[j - 1];
+			// }
 
 			// kan testa med att ha en array med vikter sen
 			used_wma_bw[i] += th[i].prev_used_bw[j] * (j + 1);
@@ -124,8 +124,9 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	
 	/* Calculate how to partition bandwidth between different cores */
 	// (store new value in thread_info)
-
-
+	
+	
+	
 	/* Partition bandwidth */
 	//assign_bw(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
