@@ -10,6 +10,23 @@
 #define STR_SIZE 1000
 #define BW_VAL_THRESHOLD 5
 
+
+void get_bw_from_memguard()
+{
+	if(system(NULL)) puts ("Ok");
+		else exit (EXIT_FAILURE);
+
+	char script_str[STR_SIZE] = {0};
+	snprintf(script_str, sizeof(script_str), "%s %d %s", "tail", -1,"/sys/kernel/debug/memguard/usage > /home/Thesis_job/result.txt");
+	
+	std::cout << "------" << script_str << "\n";
+
+	int status = system(script_str);
+	if(status < 0)
+		printf("%s\n",strerror(errno));
+
+}
+
 // use mode = 0 to disable best-effort
 void set_exclusive_mode(int mode)
 {

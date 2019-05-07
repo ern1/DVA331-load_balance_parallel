@@ -64,13 +64,11 @@ inline void start_PAPI()
   if ((retval = PAPI_create_eventset(&event_set)) != PAPI_OK)
     printf("Failed to create eventset: %s\n", PAPI_strerror(retval));
   
-  if ((retval = PAPI_add_event(event_set, PAPI_L3_TCM)) != PAPI_OK) {
+  if ((retval = PAPI_add_event(event_set, PAPI_L3_TCM)) != PAPI_OK)
     printf("Failed to attach L3 misses: %s\n", PAPI_strerror(retval));
-  }
   
   if ((retval = PAPI_add_event(event_set, PAPI_PRF_DM)) != PAPI_OK)
     printf("Failed to attach Prefetch Cache Misses: %s\n", PAPI_strerror(retval));
-
 
   /* ----------------------- TEST ----------------------- */
   //std::cout << "---------> event_set: " << *event_set << std::endl;

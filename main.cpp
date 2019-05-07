@@ -59,7 +59,7 @@ void* feature_thread(void* threadArg)
 
 	// 
 	long long values[2];
-	start_PAPI();
+	//start_PAPI();
 
 	// Start timer
 	//long long unsigned start_time = time_ns();
@@ -79,7 +79,7 @@ void* feature_thread(void* threadArg)
 	std::vector<cv::KeyPoint> keypoints;
 
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
-	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(2);
+	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(200);
 	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
@@ -89,11 +89,11 @@ void* feature_thread(void* threadArg)
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 
 	// Read performance counters
-	read_PAPI(values);
-	stop_PAPI(values);
-	thread_info->l3_misses = values[0];
-	thread_info->prefetch_misses = values[1];
-	std::cout << "getppid/getpid/pthread_self: " << getppid()  << "/" << getpid() << "/" << pthread_self() << " \n";
+	//read_PAPI(values);
+	//stop_PAPI(values);
+	//thread_info->l3_misses = values[0];
+	//thread_info->prefetch_misses = values[1];
+	//std::cout << "getppid/getpid/pthread_self: " << getppid()  << "/" << getpid() << "/" << pthread_self() << " \n";
 }
 
 int main(int argc, char** argv)
@@ -106,12 +106,14 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	
-	//set_exclusive_mode(0); // Disable best-effort
+	set_exclusive_mode(0); // Disable best-effort
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);
 	void* status;
 
-	init_PAPI();
+	assign_bw_MB(900, 10, 10, 10);
+
+	//init_PAPI();
 	cv::VideoCapture cap(argv[2]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
 	//cv::namedWindow("Video", cv::WINDOW_NORMAL);
@@ -175,7 +177,7 @@ int main(int argc, char** argv)
 		print_thread_info(thread_info, num_threads);
 		std::cout << "FPS: " << fps << "\n\n";
 
-		partition_bandwidth(thread_info, num_threads);
+		//partition_bandwidth(thread_info, num_threads);
 	}
 
 	cap.release();

@@ -20,13 +20,16 @@ void set_exclusive_mode(int mode)
 	snprintf(script_str, sizeof(script_str), "%s %d %s",
 		"echo exclusive", mode, "> /sys/kernel/debug/memguard/control");
 
-	std::cout << "----------- " << script_str << '\n';
+	//std::cout << "----------- " << script_str << '\n';
 
 	int status = system(script_str);
 	if (status < 0)
 		printf("%s\n", strerror(errno));
 }
+// inline void calculate_bw_exec(double ex_time0,double ex_time1,double ex_time2,double ex_time3)
+// {
 
+// }
 // Assign bandwidth using percentages
 void assign_bw(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 {
@@ -58,6 +61,7 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 }
 
 // Set total bandwidth that can be partitionen between cores
+// Att sätta maxbw verkar inte fungera, så skit i denna.
 void set_max_bw(int max_bw)
 {
 	if (system(NULL)) puts ("Ok");
@@ -75,7 +79,6 @@ void set_max_bw(int max_bw)
 // Calculate used bandwidth by using performance counters
 inline static double calculate_bandwidth_MBs(long long l3_misses, long long prefetch_misses, int cache_line_size, double execution_time)
 {
-	// TODO: Ändra till MB/s?
 	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size;
 	return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
 }
@@ -123,7 +126,7 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	std::cout << '\n';
 	
 	/* Calculate how to partition bandwidth between different cores */
-	// (store new value in thread_info)
+	// (As a percentage of maxbw? Then store new percentage value of each core in thread_info)
 	
 	
 	
