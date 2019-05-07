@@ -37,3 +37,6 @@
 
 # VS Code
 .vscode/ipch/*
+
+# Memguard 
+*.ko
