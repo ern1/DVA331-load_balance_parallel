@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
+#include <numeric>
 
 #define STR_SIZE 1000
 #define BW_VAL_THRESHOLD 5
@@ -14,23 +15,24 @@
 int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
 int max_bw;
 
+
 void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw);
 
 struct ThreadInfo {
 	int core_id;
 	double execution_time; 		// in seconds
-	double bw_percentage; 		// in MB/s
+	double guaranteed_bw; 		// in MB/s
 	std::vector<double> prev_used_bw;
 	std::vector<double> prev_used_exec_time;
 
-	ThreadInfo() : bw_percentage(0.25) {}
+	ThreadInfo() : guaranteed_bw(0.25) {}
 };
 
 inline void print_thread_info(const ThreadInfo* th, int size){
-  std::cout << std::setw(10) << "Core id" << std::setw(22) << "Execution time (ms)" << "Bandwidth (%)" <<'\n';
+  std::cout << std::setw(10) << "Core id" << std::setw(22) << "Execution time (ms)" << "Guaranteed bandwidth" <<'\n';
 
   for (int i = 0; i < size; i++)
-    std::cout << std::setw(10) << th[i].core_id << std::setw(22) << th[i].execution_time * 1000 << th[i].bw_percentage << '\n';
+    std::cout << std::setw(10) << th[i].core_id << std::setw(22) << th[i].execution_time * 1000 << th[i].guaranteed_bw << '\n';
 }
 
 void measure_max_bw(){
@@ -148,9 +150,8 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 {
 	double used_wma_bw[num_threads] = {0};
 	double used_wma_exec_time[num_threads] = {0};
-	int new_core_bw[num_threads]; // in percent
-	
 	double used_bw[num_threads];
+	double tot_bw = 0, tot_exec_time = 0; // 100 percent of bw/exection time
 	get_bw_from_memguard(used_bw);
 
 	/* Calculate bandwidth used by each thread */
@@ -169,14 +170,19 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 
 		// //Calculate WMA (Weighted Moving Average BW) for each core
 		int tot_weight = 0;
-		for(int j = th[i].prev_used_bw.size() - 1; j >= 0; j--)
+		for(int j = 0; j < th[i].prev_used_bw.size(); j++)
 		{
 			// kan testa med att ha en array med vikter sen
 			used_wma_bw[i] += th[i].prev_used_bw[j] * (j + 1);
+			used_wma_exec_time[i] += th[i].prev_used_exec_time[j] * (j +1);
 			tot_weight += (j + 1);
 		}
 		used_wma_bw[i] /= tot_weight;
+		used_wma_exec_time[i] /= tot_weight;
 		std::cout << "wma bw: " << used_wma_bw[i] << "\n";
+		
+		tot_bw += used_wma_bw[i];
+		tot_exec_time += used_wma_exec_time[i];
 
 		// int n = th[i].runs < BW_VAL_THRESHOLD ? h[i].runs : BW_VAL_THRESHOLD;
 		// int m = 2 / (1 + n);
@@ -184,13 +190,24 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	}
 	std::cout << '\n';
 	
+	
 	/* Calculate how to partition bandwidth between different cores */
-	// (As a percentage of maxbw?)
-	
-	
+	//int new_core_bw[num_threads];
+	//std::cout << "TEEEEST: " << std::accumulate(used_wma_bw, used_wma_bw + num_threads, 0.0) << " / " << tot_bw << std::endl;
+	for(int i = 0; i < num_threads; i++)
+	{
+		// temp - Använd även execution time
+		//??? = used_bw[i] / tot_bw;
+		th[i].guaranteed_bw = used_wma_exec_time[i] / tot_exec_time * max_bw;
+		
+		//th[i].guaranteed_bw = procent_den_ska_få * max_bw;
+		//std::cout << th[i].guaranteed_bw << "\n";
+	}
+
 	
 	/* Partition bandwidth */
-	//assign_bw(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
+	assign_bw_MB(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
+	//assign_bw_MB(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 
 #endif

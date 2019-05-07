@@ -93,7 +93,6 @@ void* feature_thread(void* threadArg)
 	//stop_PAPI(values);
 	//thread_info->l3_misses = values[0];
 	//thread_info->prefetch_misses = values[1];
-	//std::cout << "getppid/getpid/pthread_self: " << getppid()  << "/" << getpid() << "/" << pthread_self() << " \n";
 }
 
 int main(int argc, char** argv)
@@ -117,8 +116,6 @@ int main(int argc, char** argv)
 	//init_PAPI();
 	cv::VideoCapture cap(argv[2]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
-	//cv::namedWindow("Video", cv::WINDOW_NORMAL);
-	//cv::resizeWindow("Video", 1920, 1080);
 
 	// Check if camera opened successfully
 	if(!cap.isOpened()) {
