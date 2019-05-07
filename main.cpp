@@ -106,6 +106,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	
+	measure_max_bw();
 	set_exclusive_mode(0); // Disable best-effort
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);

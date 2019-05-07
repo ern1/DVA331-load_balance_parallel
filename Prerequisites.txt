@@ -28,7 +28,9 @@ Kan eventuellt behöva köra följande:
 sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
 
 
------------- Prepare cgroups ------------:
-Skapa grupper:
+------------ Install memguard ------------:
+(used forked version or whatever we did)
 
-[använder nog ej cgroups]
+
+------------ Other ------------:
+(något för att mäta bandbredd?)

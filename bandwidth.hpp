@@ -14,11 +14,16 @@
 int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
 int max_bw;
 
+void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw);
+
 struct ThreadInfo {
 	int core_id;
 	double execution_time; 		// in seconds
 	double bw_percentage; 		// in MB/s
 	std::vector<double> prev_used_bw;
+	std::vector<double> prev_used_exec_time;
+
+	ThreadInfo() : bw_percentage(0.25) {}
 };
 
 inline void print_thread_info(const ThreadInfo* th, int size){
@@ -28,26 +33,48 @@ inline void print_thread_info(const ThreadInfo* th, int size){
     std::cout << std::setw(10) << th[i].core_id << std::setw(22) << th[i].execution_time * 1000 << th[i].bw_percentage << '\n';
 }
 
- 
+void measure_max_bw(){
+	// Increase bw for each core to not interfere with bandwidth measurement
+	assign_bw_MB(100000, 100000, 100000, 100000);
+	
+	// Measure bandwidth and set max_bw
+	int status = system("mbw 500 -t 0 | grep 'AVG' | grep -oE '\\-?[0-9]+\\.[0-9]+' | tail -1 > temp");
+	if(status < 0)
+		printf("%s\n",strerror(errno));
+
+	std::ifstream f;
+	f.open("temp");
+	f >> max_bw;
+	f.close();
+
+	std::cout << "max_bw: "<< max_bw << '\n';
+
+	// Partition the measured bandwidth evenly among the CPU cores (as a starting point)
+	int bw = max_bw / 4;
+	assign_bw_MB(bw, bw, bw, bw);
+} 
 
 void get_bw_from_memguard(double* bw)
 {
 	if(system(NULL)) puts ("Ok");
 		else exit (EXIT_FAILURE);
 
-	int status = system("tail -1 /sys/kernel/debug/memguard/usage > usage_bw");
+	int status = system("tail -3 /sys/kernel/debug/memguard/usage > temp");
 	if(status < 0)
 		printf("%s\n",strerror(errno));
 
 	std::ifstream f;
-	int value, i = 0;
-
-	f.open("usage_bw");
+	double value;
+	int i = 0;
+	
+	f.open("temp");
 	while(f >> value){
-		bw[i++] = value;
+		bw[i++] = value / 100.0;
 	}
-
+	f.close();
 }
+
+// höj till max, mät, sätt max_bw till uppmätta, fördela 1/4
 // use mode = 0 to disable best-effort
 void set_exclusive_mode(int mode)
 {
@@ -110,7 +137,7 @@ void set_max_bw(int max_bw)
 }
 
 // Calculate used bandwidth by using performance counters
-inline static double calculate_bandwidth_MBs(long long l3_misses, long long prefetch_misses, int cache_line_size, double execution_time)
+inline static double calculate_bandwidth_MBs(long long l3_misses, long long prefetch_misses, double execution_time)
 {
 	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size;
 	return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
@@ -120,6 +147,7 @@ inline static double calculate_bandwidth_MBs(long long l3_misses, long long pref
 void partition_bandwidth(ThreadInfo* th, int num_threads)
 {
 	double used_wma_bw[num_threads] = {0};
+	double used_wma_exec_time[num_threads] = {0};
 	int new_core_bw[num_threads]; // in percent
 	
 	double used_bw[num_threads];
@@ -131,10 +159,14 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 
 		//Add current used_bw to prev_used_bw and delete oldest
 		th[i].prev_used_bw.push_back(used_bw[i]);
+		th[i].prev_used_exec_time.push_back(th[i].execution_time);
 
 		if(th[i].prev_used_bw.size() >= BW_VAL_THRESHOLD)
+		{
 			th[i].prev_used_bw.erase(th[i].prev_used_bw.begin());
-		
+			th[i].prev_used_exec_time.erase(th[i].prev_used_exec_time.begin());
+		}
+
 		// //Calculate WMA (Weighted Moving Average BW) for each core
 		int tot_weight = 0;
 		for(int j = th[i].prev_used_bw.size() - 1; j >= 0; j--)

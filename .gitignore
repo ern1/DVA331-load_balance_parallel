@@ -40,3 +40,6 @@
 
 # Memguard 
 *.ko
+
+# Other
+temp
