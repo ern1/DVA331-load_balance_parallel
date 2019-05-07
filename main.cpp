@@ -20,7 +20,7 @@
 #include <chrono>
 #include <papi.h>
 #include <pthread.h>
-#include "perfCounters.hpp"
+//#include "perfCounters.hpp"
 #include "bandwidth.hpp"
 
 int num_threads;
@@ -56,7 +56,7 @@ void* feature_thread(void* threadArg)
 {
 	ThreadInfo* thread_info = (ThreadInfo*)threadArg;
 	stick_this_thread_to_core(thread_info->core_id);
-
+	//get_bw_from_memguard();
 	// 
 	long long values[2];
 	//start_PAPI();
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 	num_threads = atoi(argv[1]);
 	void* status;
 
-	assign_bw_MB(900, 10, 10, 10);
+	//assign_bw_MB(900, 900, 900, 900);
 
 	//init_PAPI();
 	cv::VideoCapture cap(argv[2]);
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 		print_thread_info(thread_info, num_threads);
 		std::cout << "FPS: " << fps << "\n\n";
 
-		//partition_bandwidth(thread_info, num_threads);
+		partition_bandwidth(thread_info, num_threads);
 	}
 
 	cap.release();
