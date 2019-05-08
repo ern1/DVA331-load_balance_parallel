@@ -79,7 +79,7 @@ void* feature_thread(void* threadArg)
 	std::vector<cv::KeyPoint> keypoints;
 
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
-	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(200);
+	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(2);
 	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
@@ -87,7 +87,7 @@ void* feature_thread(void* threadArg)
 	// End timer
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
-
+	thread_info->tot_exec_time += thread_info->execution_time;
 	// Read performance counters
 	//read_PAPI(values);
 	//stop_PAPI(values);
@@ -178,8 +178,15 @@ int main(int argc, char** argv)
 		partition_bandwidth(thread_info, num_threads);
 	}
 
+
 	cap.release();
   	cv::destroyAllWindows();
+
+	double sum_exec_time = 0;
+	for(int i = 0; i < num_threads; i++)
+		sum_exec_time += thread_info[i].tot_exec_time;
+
+	std::cout << "Sum of execution times: " << sum_exec_time << std::endl;
 	
 	return 0;
 }
