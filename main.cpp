@@ -78,8 +78,8 @@ void* feature_thread(void* threadArg)
 	roi[thread_info->core_id] = frame(roi_rect);
 	std::vector<cv::KeyPoint> keypoints;
 
-	//cv::Ptr<cv::ORB> detector = cv::ORB::create(800);
-	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(2);
+	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
+	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(50);
 	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
@@ -88,6 +88,7 @@ void* feature_thread(void* threadArg)
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 	thread_info->tot_exec_time += thread_info->execution_time;
+	
 	// Read performance counters
 	//read_PAPI(values);
 	//stop_PAPI(values);
