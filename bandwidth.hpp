@@ -20,10 +20,10 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw);
 struct ThreadInfo {
 	int core_id;
 	double execution_time; 		// in seconds
-	double tot_exec_time;			// in seconds
+	double tot_exec_time;		// in seconds
 
 	double guaranteed_bw; 		// percentage of max_bw
-	double used_bw; 					// percentage of max_bw
+	double used_bw;				// percentage of max_bw
 
 	std::vector<double> prev_used_bw;
 	std::vector<double> prev_used_exec_time;
@@ -119,7 +119,7 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 {
 	if (system(NULL)) puts ("Ok");
 		else exit (EXIT_FAILURE);
-
+_
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
 		"echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
@@ -159,11 +159,10 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 			th[i].prev_used_exec_time.erase(th[i].prev_used_exec_time.begin());
 		}
 
-		// //Calculate WMA (Weighted Moving Average BW) for each core
+		//Calculate WMA (Weighted Moving Average BW) for each core
 		int tot_weight = 0;
 		for(int j = 0; j < th[i].prev_used_bw.size(); j++)
 		{
-			// kan testa med att ha en array med vikter sen
 			used_wma_bw[i] += th[i].prev_used_bw[j] * (j + 1);
 			used_wma_exec_time[i] += th[i].prev_used_exec_time[j] * (j +1);
 			tot_weight += (j + 1);
@@ -181,14 +180,10 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	}
 	std::cout << '\n';
 	
-	
 	/* Calculate how to partition bandwidth between different cores */
-
 	for(int i = 0; i < num_threads; i++)
 	{
 		// temp - Använd även execution time, kolla alla exekverings tider mot varandra för att se skillnad i procent 
-		//??? = used_bw[i] / tot_bw;
-		
 		th[i].guaranteed_bw = (used_wma_exec_time[i] / tot_exec_time);
 		
 		//th[i].guaranteed_bw = procent_den_ska_få * max_bw;
@@ -197,7 +192,7 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 
 	
 	/* Partition bandwidth */
-	assign_bw(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
+	//assign_bw(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
 	//assign_bw_MB(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 

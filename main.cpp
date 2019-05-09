@@ -20,7 +20,7 @@
 #include <chrono>
 #include <papi.h>
 #include <pthread.h>
-//#include "perfCounters.hpp"
+#include "perfCounters.hpp"
 #include "bandwidth.hpp"
 
 int num_threads;
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 	num_threads = atoi(argv[1]);
 	void* status;
 
-	//init_PAPI();
+	init_PAPI();
 	cv::VideoCapture cap(argv[2]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
 

@@ -9,28 +9,8 @@
 #include <papi.h>
 #include <linux/perf_event.h>
 
-struct ThreadInfo {
-	int core_id;
-	double execution_time; // in seconds
-	long long l3_misses;
-	long long prefetch_misses;
-  std::vector<double> prev_used_bw;
-  //double ewma_bw;
-
-  //ThreadInfo() : ewma_bw(0) {}
-};
-
 thread_local int retval;
 thread_local int event_set = PAPI_NULL;
-
-inline void print_thread_info(const ThreadInfo* th, int size){
-  std::cout << std::setw(10) << "Core id" << std::setw(22) << "Execution time (ms)" << std::setw(12)
-			<< "L3 misses" << "Prefetch misses" << '\n';
-
-  for (int i = 0; i < size; i++)
-    std::cout << std::setw(10) << th[i].core_id << std::setw(22) << th[i].execution_time * 1000
-      << std::setw(12) << th[i].l3_misses << th[i].prefetch_misses << '\n';
-}
 
 inline long long unsigned time_ns()
 {
