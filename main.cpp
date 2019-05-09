@@ -56,8 +56,6 @@ void* feature_thread(void* threadArg)
 {
 	ThreadInfo* thread_info = (ThreadInfo*)threadArg;
 	stick_this_thread_to_core(thread_info->core_id);
-	//get_bw_from_memguard();
-	// 
 	long long values[2];
 	//start_PAPI();
 
@@ -79,8 +77,8 @@ void* feature_thread(void* threadArg)
 	std::vector<cv::KeyPoint> keypoints;
 
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
-	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(50);
-	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1200);
+	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
+	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 
@@ -98,8 +96,6 @@ void* feature_thread(void* threadArg)
 
 int main(int argc, char** argv)
 {
-	//getchar();
-
 	// Check if user is root
 	if (getuid()) {
 		std::cout << "User is not root" << std::endl;
@@ -111,8 +107,6 @@ int main(int argc, char** argv)
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);
 	void* status;
-
-	//assign_bw_MB(900, 900, 900, 900);
 
 	//init_PAPI();
 	cv::VideoCapture cap(argv[2]);
@@ -127,10 +121,10 @@ int main(int argc, char** argv)
 	// 
 	roi = new cv::Mat[num_threads];
 	ThreadInfo* thread_info = new ThreadInfo[num_threads];
+	double total_tick_count = 0;
+	int num_frames = 0;
 
-	while(cv::waitKey(25) != 27) {
-		int64 start = cv::getTickCount();
-
+	while((cv::waitKey(25) != 27) && (num_frames < 100)) {
 		cap >> frame;
 		if(frame.empty())
 			break;
@@ -145,6 +139,8 @@ int main(int argc, char** argv)
 		// Create threads
 		pthread_t threads[num_threads];
   		pthread_attr_t attr;
+
+		int64 start = cv::getTickCount();
 		
 		for (int i = 0; i < num_threads; i++) {
 			thread_info[i].core_id = i;
@@ -163,6 +159,21 @@ int main(int argc, char** argv)
 			}
 		}
 
+		double used_bw[4];
+		get_bw_from_memguard(used_bw);
+		for(int i = 0; i < num_threads; i++)
+			thread_info[i].used_bw = used_bw[i] / max_bw;
+
+		// Print stats
+		double ticks = cv::getTickCount() - start;
+		double fps = cv::getTickFrequency() / ticks;
+		print_thread_info(thread_info, num_threads);
+		std::cout << "FPS: " << fps << "\n\n";
+
+		total_tick_count += ticks;
+		num_frames++;
+
+		// create image
 		std::vector<cv::Mat> result_mat;
 		for (int i = 0; i < num_threads; i++)
 			result_mat.push_back(roi[i].clone());
@@ -171,11 +182,6 @@ int main(int argc, char** argv)
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
 
-		// Print stats
-		double fps = cv::getTickFrequency() / (cv::getTickCount() - start);
-		print_thread_info(thread_info, num_threads);
-		std::cout << "FPS: " << fps << "\n\n";
-
 		partition_bandwidth(thread_info, num_threads);
 	}
 
@@ -183,11 +189,11 @@ int main(int argc, char** argv)
 	cap.release();
   	cv::destroyAllWindows();
 
-	double sum_exec_time = 0;
-	for(int i = 0; i < num_threads; i++)
-		sum_exec_time += thread_info[i].tot_exec_time;
+	// double sum_exec_time = 0;
+	// for(int i = 0; i < num_threads; i++)
+	// 	sum_exec_time += thread_info[i].tot_exec_time;
 
-	std::cout << "Sum of execution times: " << sum_exec_time << std::endl;
-	
+	// std::cout << "Sum of execution times: " << sum_exec_time << std::endl;
+	std::cout << "Execution time: " << (total_tick_count / cv::getTickFrequency()) << std::endl;
 	return 0;
 }
