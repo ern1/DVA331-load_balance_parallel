@@ -20,11 +20,15 @@
 #include <chrono>
 #include <papi.h>
 #include <pthread.h>
-#include "perfCounters.hpp"
+//#include "perfCounters.hpp"
 #include "bandwidth.hpp"
+
+#define USE_MEMGUARD 0
 
 int num_threads;
 int global_width, global_height;
+int get_avg_bw_done = 0;
+double avg_bw[4] = {0};
 cv::Mat frame;
 cv::Mat* roi;
 
@@ -34,6 +38,37 @@ const cv::Scalar COLORS[4] = {
 	cv::Scalar(0, 0, 255),
 	cv::Scalar(255, 0, 255)
 };
+
+void get_avg_bw_usage()
+{
+	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+	std::fill(avg_bw, avg_bw + num_threads, 0);
+	double res[num_threads] = {0};
+	//int cnt = 0;
+
+	while(get_avg_bw_done < 4)
+	{
+		get_bw_from_memguard(res);
+		for(int i = 0; i < num_threads; i++)
+		{
+			//avg_bw[i] += res[i];
+			//cnt++;	
+			
+			if(res[i] > avg_bw[i])
+				avg_bw[i] = res[i];
+
+			// if(std::chrono::steady_clock::now() - start_time > std::chrono::milliseconds(10))
+			// {
+			// 	break;
+			// }
+		}
+	}
+
+	// for(int i = 0; i < num_threads; i++)
+	// 		avg_bw[i] /= cnt;
+
+	get_avg_bw_done = 0;
+}
 
 int stick_this_thread_to_core(int core_id)
 {
@@ -56,8 +91,6 @@ void* feature_thread(void* threadArg)
 {
 	ThreadInfo* thread_info = (ThreadInfo*)threadArg;
 	stick_this_thread_to_core(thread_info->core_id);
-	long long values[2];
-	//start_PAPI();
 
 	// Start timer
 	//long long unsigned start_time = time_ns();
@@ -81,17 +114,16 @@ void* feature_thread(void* threadArg)
 	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
-
+	get_avg_bw_done++;
 	// End timer
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 	thread_info->tot_exec_time += thread_info->execution_time;
 	
-	// Read performance counters
-	//read_PAPI(values);
-	//stop_PAPI(values);
-	//thread_info->l3_misses = values[0];
-	//thread_info->prefetch_misses = values[1];
+	// Read performance counters and calculate used bandwidth
+#if USE_MEMGUARD
+	thread_info->used_bw = calculate_bandwidth_MBs(?, ?, thread_info->execution_time) / max_bw;
+#endif
 }
 
 int main(int argc, char** argv)
@@ -101,14 +133,16 @@ int main(int argc, char** argv)
 		std::cout << "User is not root" << std::endl;
 		return 0;
 	}
-	
-	measure_max_bw();
-	set_exclusive_mode(0); // Disable best-effort
+
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	num_threads = atoi(argv[1]);
 	void* status;
 
-	init_PAPI();
+#if USE_MEMGUARD
+	measure_max_bw();		// Measure and set max_bw
+	set_exclusive_mode(0); 	// Disable best-effort
+#endif
+
 	cv::VideoCapture cap(argv[2]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
 
@@ -150,7 +184,9 @@ int main(int argc, char** argv)
         		exit(1);
 			}
 		}
-		
+
+		//get_avg_bw_usage();
+
 		// Join threads
 		for (int i = 0; i < num_threads; i++) {
 			if(pthread_join(threads[i], &status) != 0) {
@@ -159,16 +195,20 @@ int main(int argc, char** argv)
 			}
 		}
 
+#if USE_MEMGUARD
 		double used_bw[4];
 		get_bw_from_memguard(used_bw);
 		for(int i = 0; i < num_threads; i++)
 			thread_info[i].used_bw = used_bw[i] / max_bw;
+#endif
 
 		// Print stats
 		double ticks = cv::getTickCount() - start;
 		double fps = cv::getTickFrequency() / ticks;
 		print_thread_info(thread_info, num_threads);
 		std::cout << "FPS: " << fps << "\n\n";
+		for(int i = 0; i < num_threads; i++)
+			std::cout << "AVG_BW: " << avg_bw[i] << "\n";
 
 		total_tick_count += ticks;
 		num_frames++;
@@ -182,9 +222,11 @@ int main(int argc, char** argv)
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
 
-		partition_bandwidth(thread_info, num_threads);
-	}
 
+#if USE_MEMGUARD
+		partition_bandwidth(thread_info, num_threads);
+#endif
+	}
 
 	cap.release();
   	cv::destroyAllWindows();

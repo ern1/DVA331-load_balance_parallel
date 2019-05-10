@@ -119,7 +119,7 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 {
 	if (system(NULL)) puts ("Ok");
 		else exit (EXIT_FAILURE);
-_
+
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
 		"echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
@@ -143,7 +143,7 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	double used_wma_exec_time[num_threads] = {0};
 	double used_bw[num_threads];
 	double tot_bw = 0, tot_exec_time = 0; // 100 percent of bw/exection time
-	get_bw_from_memguard(used_bw);
+	//get_bw_from_memguard(used_bw); // skicka in som argument istället.
 
 	/* Calculate bandwidth used by each thread */
 	for (int i = 0; i < num_threads; i++){
@@ -192,7 +192,7 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 
 	
 	/* Partition bandwidth */
-	//assign_bw(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
+	assign_bw(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
 	//assign_bw_MB(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 
