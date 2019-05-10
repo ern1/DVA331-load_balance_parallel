@@ -24,7 +24,7 @@
 #include "bandwidth.hpp"
 
 #define USE_MEMGUARD 1
-#define NUM_THREADS 4 	// Använd istället för num_threads?
+#define NUM_THREADS 4
 
 int global_width, global_height;
 cv::Mat frame;
@@ -33,6 +33,7 @@ cv::Mat* roi;
 int get_avg_bw_done = 0;
 double avg_bw[NUM_THREADS] = {0};
 
+// För cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
 	cv::Scalar(255, 0, 0),
 	cv::Scalar(0, 255, 0),
@@ -64,10 +65,8 @@ void get_avg_bw_usage()
 			// }
 		}
 	}
-
 	// for(int i = 0; i < num_threads; i++)
 	// 		avg_bw[i] /= cnt;
-
 	get_avg_bw_done = 0;
 }
 
@@ -92,6 +91,7 @@ void* feature_thread(void* threadArg)
 {
 	ThreadInfo* thread_info = (ThreadInfo*)threadArg;
 	stick_this_thread_to_core(thread_info->core_id);
+	start_counter(thread_info->core_id);
 
 	// Start timer
 	//long long unsigned start_time = time_ns();
@@ -116,30 +116,26 @@ void* feature_thread(void* threadArg)
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 	get_avg_bw_done++;
+
 	// End timer
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 	thread_info->tot_exec_time += thread_info->execution_time;
 	
-	
-#if USE_MEMGUARD
-	/* 	TODO: 
-	**	- Change calculate_bandwidth_MBs to not make use of prefetch cache misses.
-	**	- Only use this if we use perf events to get number of cache misses. 
-	*/
 	// Read performance counters and calculate used bandwidth
-	//thread_info->used_bw = calculate_bandwidth_MBs(?, ?, thread_info->execution_time) / max_bw;
-#endif
+	unsigned long long cache_misses = read_counter(thread_info->core_id);
+	stop_counter(thread_info->core_id);
+	thread_info->used_bw = calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) / max_bw;
+	//std::cout << "2 - core_id: " << thread_info->core_id << ", MB used: " << calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) << std::endl;
 }
 
 int main(int argc, char** argv)
 {
-	// TEST...
-	struct perf_event_attr test_attr = init_perf_event();
-	int test_fd = start_counter(&test_attr, 0);
-	unsigned long long test_val = read_counter(test_fd);
-	std::cout << "test_val (1): " << test_val << std::endl;
-
+	void* status;
+	roi = new cv::Mat[NUM_THREADS];
+	ThreadInfo* thread_info = new ThreadInfo[NUM_THREADS];
+	double total_tick_count = 0;
+	int num_frames = 0;
 
 	// Check if user is root
 	if (getuid()) {
@@ -147,6 +143,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+	init_perf_events(NUM_THREADS);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	cv::VideoCapture cap(argv[1]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
@@ -157,23 +154,23 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-
-	// TEST...
-	test_val = read_counter(test_fd);
-	std::cout << "test_val (2): " << test_val << std::endl;
-	exit(0); // stänger ner program då jag bara testar nu
-
-
 #if USE_MEMGUARD
-	measure_max_bw();		// Measure and set max_bw
-	set_exclusive_mode(0);	// Disable best-effort
+	// Increase bw for each core to not interfere with the bandwidth measurement
+	assign_bw_MB(100000, 100000, 100000, 100000);
 #endif
 
-	void* status;
-	roi = new cv::Mat[NUM_THREADS];
-	ThreadInfo* thread_info = new ThreadInfo[NUM_THREADS];
-	double total_tick_count = 0;
-	int num_frames = 0;
+	measure_max_bw(); 	// Measure and set max_bw
+	// max_bw = 7500; 		/*  For testing purposes we usually set max_bw lower than the measured 
+	// 						value to prevent other processes from affecting the result. */
+
+#if USE_MEMGUARD
+	set_exclusive_mode(0);	// Disable best-effort
+	int new_bw = max_bw / 4;
+	assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
+	
+	for(int i = 0; i < NUM_THREADS; i++)
+		thread_info[i].guaranteed_bw = new_bw;
+#endif
 
 	while((cv::waitKey(25) != 27) && (num_frames < 100)) {
 		cap >> frame;
@@ -213,14 +210,6 @@ int main(int argc, char** argv)
 			}
 		}
 
-// TODO: Remove this garbage
-#if USE_MEMGUARD
-		double used_bw[4];
-		//get_bw_from_memguard(used_bw);
-		for(int i = 0; i < NUM_THREADS; i++)
-			thread_info[i].used_bw = used_bw[i] / max_bw;
-#endif
-
 		// Print stats
 		double ticks = cv::getTickCount() - start;
 		double fps = cv::getTickFrequency() / ticks;
@@ -253,12 +242,6 @@ int main(int argc, char** argv)
 
 	// Print total exection time (time from fork to join for all frames)
 	std::cout << "Execution time: " << (total_tick_count / cv::getTickFrequency()) << std::endl;
-
-	// TODO: Ta bort. Tror inte det finns någon anledning att mäta detta.
-	/*double sum_exec_time = 0;
-	for(int i = 0; i < NUM_THREADS; i++)
-		sum_exec_time += thread_info[i].tot_exec_time;
-	std::cout << "Sum of execution times: " << sum_exec_time << std::endl;*/
 	
 	return 0;
 }

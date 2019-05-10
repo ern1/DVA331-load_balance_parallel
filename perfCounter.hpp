@@ -13,88 +13,57 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
-struct perf_event_attr init_perf_event()
+static thread_local perf_event_attr event_attr;
+static int* fd;
+
+void init_perf_events(int num_cores)
 {
     /*  Finns andra event som kanske är mer relevanta om man sätter type till PERF_TYPE_HW_CACHE,
         men PERF_COUNT_HW_CACHE_MISSES används i MemGuard så troligtvis bäst att använda samma. 
         Mer info: http://web.eece.maine.edu/~vweaver/projects/perf_events/perf_event_open.html */
-    struct perf_event_attr attr;
-    memset(&attr, 0, sizeof(struct perf_event_attr));
-	attr.type             = PERF_TYPE_HARDWARE;
-    attr.config           = PERF_COUNT_HW_CACHE_MISSES;
-	attr.size             = sizeof(struct perf_event_attr);
-    attr.pinned           = 1,  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
-	attr.disabled         = 0;  // Start counter as enabled (= 0)
-	attr.exclude_kernel   = 1;  // Don't count excludes events that happen in kernel-space (= 1) ---> Rätt? (fast varför skulle inte dom räknas?)
+    memset(&event_attr, 0, sizeof(struct perf_event_attr));
+	event_attr.type             = PERF_TYPE_HARDWARE;
+    event_attr.config           = PERF_COUNT_HW_CACHE_MISSES;
+    //event_attr.type             = PERF_TYPE_HW_CACHE;
+    //event_attr.config           = PERF_COUNT_HW_CACHE_LL;
+	event_attr.size             = sizeof(struct perf_event_attr);
+    event_attr.pinned           = 1,  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
+	event_attr.disabled         = 0;  // Start counter as enabled (= 0)
+	event_attr.exclude_kernel   = 1;  // Don't count excludes events that happen in kernel-space (= 1) ---> Rätt? (fast varför skulle inte dom räknas?)
 
-    return attr;
-
-    /* --------- Saker jag stal från MemGuard nedan --------- */
-    //struct perf_event *event = NULL;
-    // struct perf_event_attr attr = {
-    //     .type           = PERF_TYPE_HARDWARE,
-    //     .config         = PERF_COUNT_HW_CACHE_MISSES,
-    //     .size           = sizeof(struct perf_event_attr),
-    //     .pinned         = 1,
-    //     .disabled       = 1,
-    //     .exclude_kernel = 1,   /* TODO: 1 mean, no kernel mode counting */
-    // };
-
-    // ska denna verkligen användas? (verkar inte så, så tog bort cpu som argument)
-    //event = perf_event_create_kernel_counter(&attr, cpu, NULL, NULL, NULL);
-
-    // if(!event)
-    //     return NULL;
-
-    // perf_event_enable(event);
-    // pr_info("cpu%d enabled counter type %d.\n", cpu, (int)id);
-
-    //return event;
+    fd = new int[num_cores];
 }
 
-static int perf_event_open(struct perf_event_attr *event_attr, pid_t pid, int cpu, int grp_fd, unsigned long flags)
+static int perf_event_open(pid_t pid, int cpu, int grp_fd, unsigned long flags)
 {
-    return syscall(__NR_perf_event_open, event_attr, pid, cpu, grp_fd, flags);
+    return syscall(__NR_perf_event_open, &event_attr, pid, cpu, grp_fd, flags);
 }
 
 // Returns a file descriptor that allows measuring performance information
-int start_counter(perf_event_attr* attr, int cpu)
+void start_counter(int core_id)
 {
     // pid == -1, cpu >= 0 - Measures all processes/threads on the specified CPU.
-    int fd = perf_event_open(attr, -1, cpu, -1, 0);
+    fd[core_id] = perf_event_open(-1, core_id, -1, 0);
 
     if(fd < 0)
-        perror("Error: Opening performance counter");
-
-    return fd;
+        perror("Error opening performance counter");
 }
 
-unsigned long long read_counter(int fd)
+// vet inte om det behöver vara en unsigned long long
+unsigned long long read_counter(int core_id)
 {
     long long unsigned rv;
 
-    if(read(fd, &rv, sizeof(rv)) == 0)
-        perror("Error: Reading performance counter");
+    if(read(fd[core_id], &rv, sizeof(rv)) == 0)
+        perror("Error reading performance counter");
 
     return rv;
 }
 
-void stop_counter(int fd)
+void stop_counter(int core_id)
 {
-    if(close(fd) != 0)
-        perror("Error: Stopping performance counter");
+    if(close(fd[core_id]) != 0)
+        perror("Error stopping performance counter");
 }
-
-
-/* Körs på varje cpu i MemGuard (med hjälp av on_each_cpu som finns i smp.h,
-    men den funktionen behöver nog inte vi).*/
-// void start_counter(perf_event* event)
-// {
-//     event->pmu->add(event, PERF_EF_START);
-// }
-// void stop_counter(perf_event* event)
-// {
-
-// }
 
 #endif

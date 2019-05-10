@@ -28,7 +28,7 @@ struct ThreadInfo {
 	std::vector<double> prev_used_bw;
 	std::vector<double> prev_used_exec_time;
 
-	ThreadInfo() : guaranteed_bw(0.25), tot_exec_time(0.0) {}
+	ThreadInfo() : guaranteed_bw(0.0), tot_exec_time(0.0) {}
 };
 
 inline void print_thread_info(const ThreadInfo* th, int size){
@@ -41,9 +41,6 @@ inline void print_thread_info(const ThreadInfo* th, int size){
 }
 
 void measure_max_bw(){
-	// Increase bw for each core to not interfere with the bandwidth measurement
-	assign_bw_MB(100000, 100000, 100000, 100000);
-	
 	// Measure bandwidth and set max_bw
 	int status = system("mbw 500 -t 0 | grep 'AVG' | grep -oE '\\-?[0-9]+\\.[0-9]+' | tail -1 > temp");
 	if(status < 0)
@@ -55,13 +52,6 @@ void measure_max_bw(){
 	f.close();
 
 	std::cout << "max_bw: "<< max_bw << '\n';
-
-	// For testing purposes (we set it lower than the measured to prevent other processes from affecting the result)
-	max_bw = 2000; 
-
-	// Partition the measured bandwidth evenly among the CPU cores (as a starting point)
-	int bw = max_bw / 4;
-	assign_bw_MB(bw, bw, bw, bw);
 } 
 
 void get_bw_from_memguard(double* bw)
@@ -131,9 +121,10 @@ void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
 }
 
 // Calculate used bandwidth by using performance counters
-inline static double calculate_bandwidth_MBs(long long l3_misses, long long prefetch_misses, double execution_time)
+// (tog bort prefetch_misses)
+inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execution_time)
 {
-	long long bw_b = (l3_misses + prefetch_misses) * cache_line_size;
+	unsigned long long bw_b = (double)l3_misses * cache_line_size;
 	return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
 }
 
