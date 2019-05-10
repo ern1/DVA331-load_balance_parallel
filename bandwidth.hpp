@@ -41,7 +41,7 @@ inline void print_thread_info(const ThreadInfo* th, int size){
 }
 
 void measure_max_bw(){
-	// Increase bw for each core to not interfere with bandwidth measurement
+	// Increase bw for each core to not interfere with the bandwidth measurement
 	assign_bw_MB(100000, 100000, 100000, 100000);
 	
 	// Measure bandwidth and set max_bw
@@ -56,7 +56,8 @@ void measure_max_bw(){
 
 	std::cout << "max_bw: "<< max_bw << '\n';
 
-	max_bw = 2000; // for testing purposes (set lower than measured to prevent other processes from affecting the result)
+	// For testing purposes (we set it lower than the measured to prevent other processes from affecting the result)
+	max_bw = 2000; 
 
 	// Partition the measured bandwidth evenly among the CPU cores (as a starting point)
 	int bw = max_bw / 4;
