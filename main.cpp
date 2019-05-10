@@ -23,14 +23,15 @@
 //#include "perfCounters.hpp"
 #include "bandwidth.hpp"
 
-#define USE_MEMGUARD 0
+#define USE_MEMGUARD 1
 
 int num_threads;
 int global_width, global_height;
-int get_avg_bw_done = 0;
-double avg_bw[4] = {0};
 cv::Mat frame;
 cv::Mat* roi;
+
+int get_avg_bw_done = 0;
+double avg_bw[4] = {0};
 
 const cv::Scalar COLORS[4] = {
 	cv::Scalar(255, 0, 0),
@@ -120,9 +121,14 @@ void* feature_thread(void* threadArg)
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 	thread_info->tot_exec_time += thread_info->execution_time;
 	
-	// Read performance counters and calculate used bandwidth
+	
 #if USE_MEMGUARD
-	thread_info->used_bw = calculate_bandwidth_MBs(?, ?, thread_info->execution_time) / max_bw;
+	/* 	TODO: 
+	**	- Change calculate_bandwidth_MBs to not make use of prefetch cache misses.
+	**	- Only use this if we use perf events to get number of cache misses. 
+	*/
+	// Read performance counters and calculate used bandwidth
+	//thread_info->used_bw = calculate_bandwidth_MBs(?, ?, thread_info->execution_time) / max_bw;
 #endif
 }
 
