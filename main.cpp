@@ -23,7 +23,7 @@
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
 
-#define USE_MEMGUARD 1
+#define USE_MEMGUARD 0
 #define NUM_THREADS 4
 
 int global_width, global_height;
@@ -126,7 +126,7 @@ void* feature_thread(void* threadArg)
 	unsigned long long cache_misses = read_counter(thread_info->core_id);
 	stop_counter(thread_info->core_id);
 	thread_info->used_bw = calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) / max_bw;
-	//std::cout << "2 - core_id: " << thread_info->core_id << ", MB used: " << calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) << std::endl;
+	std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -217,8 +217,8 @@ int main(int argc, char** argv)
 		std::cout << "FPS: " << fps << "\n\n";
 		
 		// Just for testing, these values should be added to thread_info.used_bw if working correctly
-		for(int i = 0; i < NUM_THREADS; i++)
-			std::cout << "AVG_BW: " << avg_bw[i] << "\n";
+		//for(int i = 0; i < NUM_THREADS; i++)
+		//	std::cout << "AVG_BW: " << avg_bw[i] << "\n";
 
 		total_tick_count += ticks;
 		num_frames++;

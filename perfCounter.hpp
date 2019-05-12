@@ -13,7 +13,7 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
-static thread_local perf_event_attr event_attr;
+static perf_event_attr event_attr;
 static int* fd;
 
 void init_perf_events(int num_cores)
@@ -29,7 +29,7 @@ void init_perf_events(int num_cores)
 	event_attr.size             = sizeof(struct perf_event_attr);
     event_attr.pinned           = 1,  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
 	event_attr.disabled         = 0;  // Start counter as enabled (= 0)
-	event_attr.exclude_kernel   = 1;  // Don't count excludes events that happen in kernel-space (= 1) ---> Rätt? (fast varför skulle inte dom räknas?)
+	event_attr.exclude_kernel   = 1;  // Don't count events that happen in kernel-space (= 1)
 
     fd = new int[num_cores];
 }
