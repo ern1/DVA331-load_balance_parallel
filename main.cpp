@@ -165,11 +165,12 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	set_exclusive_mode(0);	// Disable best-effort
-	int new_bw = max_bw / 4;
-	assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
-	
-	for(int i = 0; i < NUM_THREADS; i++)
-		thread_info[i].guaranteed_bw = new_bw;
+	{
+		int new_bw = max_bw / 4;
+		assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
+		for(int i = 0; i < NUM_THREADS; i++)
+			thread_info[i].guaranteed_bw = new_bw;
+	}
 #endif
 
 	while((cv::waitKey(25) != 27) && (num_frames < 100)) {

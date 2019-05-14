@@ -25,7 +25,7 @@ void init_perf_events(int num_cores)
 	event_attr.type             = PERF_TYPE_HARDWARE;
     event_attr.config           = PERF_COUNT_HW_CACHE_MISSES;
     //event_attr.type             = PERF_TYPE_HW_CACHE;
-    //event_attr.config           = PERF_COUNT_HW_CACHE_LL;
+    //event_attr.config           = PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
 	event_attr.size             = sizeof(struct perf_event_attr);
     event_attr.pinned           = 1,  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
 	event_attr.disabled         = 0;  // Start counter as enabled (= 0)
@@ -52,8 +52,7 @@ void start_counter(int core_id)
 // vet inte om det behöver vara en unsigned long long
 unsigned long long read_counter(int core_id)
 {
-    long long unsigned rv;
-
+    unsigned long long rv;
     if(read(fd[core_id], &rv, sizeof(rv)) == 0)
         perror("Error reading performance counter");
 
