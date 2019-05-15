@@ -22,8 +22,8 @@ struct ThreadInfo {
 	double execution_time; 		// in seconds
 	double tot_exec_time;		// in seconds
 
-	double guaranteed_bw; 		// percentage of max_bw
-	double used_bw;				// percentage of max_bw
+	double guaranteed_bw; 		// a fraction of max_bw
+	double used_bw;				// a fraction of max_bw
 
 	std::vector<double> prev_used_bw;
 	std::vector<double> prev_used_exec_time;
@@ -91,14 +91,14 @@ void set_exclusive_mode(int mode)
 }
 
 // Assign bandwidth using percentages
-void assign_bw(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
+void assign_bw(double core1_bw, double core2_bw, double core3_bw, double core4_bw)
 {
 	if (system(NULL)) puts ("Ok");
 		else exit (EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
-	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
-		"echo mb", core1_bw * max_bw, core2_bw * max_bw, core3_bw * max_bw, core4_bw * max_bw, "> /sys/kernel/debug/memguard/limit");
+	snprintf(script_str, sizeof(script_str), "%s %f %f %f %f %s",
+		"echo mb", (core1_bw * max_bw), (core2_bw * max_bw), (core3_bw * max_bw), (core4_bw * max_bw), "> /sys/kernel/debug/memguard/limit");
 
 	int status = system(script_str);
 	if (status < 0)

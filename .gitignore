@@ -43,3 +43,6 @@
 
 # Other
 temp
+*.cvs
+*.csv
+*.png

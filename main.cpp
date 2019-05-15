@@ -9,21 +9,18 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iomanip>
+//#include <iomanip>
 #include <pthread.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/wait.h>
+//#include <sys/wait.h>
 #include <math.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <chrono>
-#include <papi.h>
 #include <pthread.h>
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
+#include <fstream>
 
-#define USE_MEMGUARD 0
+#define USE_MEMGUARD 1
 #define NUM_THREADS 4
 
 int global_width, global_height;
@@ -40,6 +37,21 @@ const cv::Scalar COLORS[4] = {
 	cv::Scalar(0, 0, 255),
 	cv::Scalar(255, 0, 255)
 };
+
+void send_data_to_file(double exec_time0, double exec_time1, double exec_time2, double exec_time3)
+{
+	if(system(NULL)) puts ("Ok");
+		else exit (EXIT_FAILURE);
+
+	char values_str[STR_SIZE] = {0};
+	snprintf(values_str, sizeof(values_str), "%f,%f,%f,%f\n",
+		 exec_time0, exec_time1, exec_time2, exec_time3);
+
+	std::ofstream file;
+	file.open("test.cvs", std::ios::app );
+	file << values_str;
+	file.close();
+}
 
 void get_avg_bw_usage()
 {
@@ -143,6 +155,11 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+
+	std::ofstream file;
+	file.open("test.cvs", std::ios::trunc);
+	file.close();
+
 	init_perf_events(NUM_THREADS);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	cv::VideoCapture cap(argv[1]);
@@ -169,7 +186,7 @@ int main(int argc, char** argv)
 		int new_bw = max_bw / 4;
 		assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
 		for(int i = 0; i < NUM_THREADS; i++)
-			thread_info[i].guaranteed_bw = new_bw;
+			thread_info[i].guaranteed_bw = new_bw / max_bw;
 	}
 #endif
 
@@ -190,7 +207,7 @@ int main(int argc, char** argv)
   		pthread_attr_t attr;
 
 		int64 start = cv::getTickCount();
-		
+
 		for (int i = 0; i < NUM_THREADS; i++) {
 			thread_info[i].core_id = i;
 
@@ -232,7 +249,7 @@ int main(int argc, char** argv)
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
-
+		send_data_to_file(thread_info[0].execution_time,thread_info[1].execution_time,thread_info[2].execution_time,thread_info[3].execution_time);
 #if USE_MEMGUARD
 		partition_bandwidth(thread_info, NUM_THREADS);
 #endif

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <linux/unistd.h>
 #include <linux/perf_event.h>
 //#include <linux/smp.h>
@@ -18,9 +19,7 @@ static int* fd;
 
 void init_perf_events(int num_cores)
 {
-    /*  Finns andra event som kanske är mer relevanta om man sätter type till PERF_TYPE_HW_CACHE,
-        men PERF_COUNT_HW_CACHE_MISSES används i MemGuard så troligtvis bäst att använda samma. 
-        Mer info: http://web.eece.maine.edu/~vweaver/projects/perf_events/perf_event_open.html */
+    /*  http://web.eece.maine.edu/~vweaver/projects/perf_events/perf_event_open.html */
     memset(&event_attr, 0, sizeof(struct perf_event_attr));
 	event_attr.type             = PERF_TYPE_HARDWARE;
     event_attr.config           = PERF_COUNT_HW_CACHE_MISSES;
