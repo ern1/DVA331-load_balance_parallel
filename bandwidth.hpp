@@ -13,7 +13,6 @@
 #define BW_VAL_THRESHOLD 5
 
 int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
-int max_bw;
 
 void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw);
 
@@ -40,24 +39,31 @@ inline void print_thread_info(const ThreadInfo* th, int size){
 			<< th[i].tot_exec_time << std::setw(20) << th[i].guaranteed_bw * 100 << th[i].used_bw * 100 << '\n';
 }
 
-void measure_max_bw(){
+double measure_max_bw(){
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
+
 	// Measure bandwidth and set max_bw
-	int status = system("mbw 500 -t 0 | grep 'AVG' | grep -oE '\\-?[0-9]+\\.[0-9]+' | tail -1 > temp");
+	int status = system("mbw 500 -t 2 | grep 'AVG' | grep -oE '\\-?[0-9]+\\.[0-9]+' | tail -1 > temp");
 	if(status < 0)
 		printf("%s\n",strerror(errno));
 
+	double measured_bw;
 	std::ifstream f;
+
 	f.open("temp");
-	f >> max_bw;
+	f >> measured_bw;
 	f.close();
 
-	std::cout << "max_bw: "<< max_bw << '\n';
+	std::cout << "max_bw: "<< measured_bw << '\n';
+
+	return measured_bw;
 } 
 
 void get_bw_from_memguard(double* bw)
 {
-	if(system(NULL)) puts ("Ok");
-		else exit (EXIT_FAILURE);
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
 
 	int status = system("tail -3 /sys/kernel/debug/memguard/usage > temp");
 	if(status < 0)
@@ -78,8 +84,8 @@ void get_bw_from_memguard(double* bw)
 // use mode = 0 to disable best-effort
 void set_exclusive_mode(int mode)
 {
-	if (system(NULL)) puts ("Ok");
-		else exit (EXIT_FAILURE);
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %d %s",
@@ -91,14 +97,14 @@ void set_exclusive_mode(int mode)
 }
 
 // Assign bandwidth using percentages
-void assign_bw(double core1_bw, double core2_bw, double core3_bw, double core4_bw)
+void assign_bw(double bw, double core1_bw, double core2_bw, double core3_bw, double core4_bw)
 {
-	if (system(NULL)) puts ("Ok");
-		else exit (EXIT_FAILURE);
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
 	snprintf(script_str, sizeof(script_str), "%s %f %f %f %f %s",
-		"echo mb", (core1_bw * max_bw), (core2_bw * max_bw), (core3_bw * max_bw), (core4_bw * max_bw), "> /sys/kernel/debug/memguard/limit");
+		"echo mb", (core1_bw * bw), (core2_bw * bw), (core3_bw * bw), (core4_bw * bw), "> /sys/kernel/debug/memguard/limit");
 
 	int status = system(script_str);
 	if (status < 0)
@@ -106,13 +112,13 @@ void assign_bw(double core1_bw, double core2_bw, double core3_bw, double core4_b
 }
 
 // Assign bandwidth by specifying bandwidth in MB
-void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw)
+void assign_bw_MB(double core1_bw, double core2_bw, double core3_bw, double core4_bw)
 {
-	if (system(NULL)) puts ("Ok");
-		else exit (EXIT_FAILURE);
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
 
 	char script_str[STR_SIZE] = {0};
-	snprintf(script_str, sizeof(script_str), "%s %d %d %d %d %s",
+	snprintf(script_str, sizeof(script_str), "%s %f %f %f %f %s",
 		"echo mb", core1_bw, core2_bw, core3_bw, core4_bw, "> /sys/kernel/debug/memguard/limit");
 
 	int status = system(script_str);
@@ -129,18 +135,15 @@ inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execu
 }
 
 // Parition bandwidth between different cores
-void partition_bandwidth(ThreadInfo* th, int num_threads)
+void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 {
 	double used_wma_bw[num_threads] = {0};
 	double used_wma_exec_time[num_threads] = {0};
 	double used_bw[num_threads];
-	double tot_bw = 0, tot_exec_time = 0; // 100 percent of bw/exection time
-	//get_bw_from_memguard(used_bw); // skicka in som argument istället.
+	double tot_bw = 0, tot_exec_time = 0;	// 100 percent of bw/exection time
 
 	/* Calculate bandwidth used by each thread */
 	for (int i = 0; i < num_threads; i++){
-		//std::cout << "Core: " << i << ", bw: " << used_bw[i] << '\n';
-
 		//Add current used_bw to prev_used_bw and delete oldest
 		th[i].prev_used_bw.push_back(used_bw[i]);
 		th[i].prev_used_exec_time.push_back(th[i].execution_time);
@@ -159,6 +162,7 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 			used_wma_exec_time[i] += th[i].prev_used_exec_time[j] * (j +1);
 			tot_weight += (j + 1);
 		}
+
 		used_wma_bw[i] /= tot_weight;
 		used_wma_exec_time[i] /= tot_weight;
 		//std::cout << "wma bw: " << used_wma_bw[i] << "\n";
@@ -175,16 +179,11 @@ void partition_bandwidth(ThreadInfo* th, int num_threads)
 	/* Calculate how to partition bandwidth between different cores */
 	for(int i = 0; i < num_threads; i++)
 	{
-		// temp - Använd även execution time, kolla alla exekverings tider mot varandra för att se skillnad i procent 
 		th[i].guaranteed_bw = (used_wma_exec_time[i] / tot_exec_time);
-		
-		//th[i].guaranteed_bw = procent_den_ska_få * max_bw;
-		//std::cout << th[i].guaranteed_bw << "\n";
 	}
-
 	
 	/* Partition bandwidth */
-	assign_bw(th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
+	assign_bw(bw, th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
 	//assign_bw_MB(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 
