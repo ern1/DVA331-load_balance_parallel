@@ -9,11 +9,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <iomanip>
 #include <pthread.h>
-//#include <sys/wait.h>
 #include <math.h>
-//#include <sys/time.h>
 #include <chrono>
 #include <pthread.h>
 #include "perfCounter.hpp"
@@ -23,12 +20,10 @@
 #define USE_MEMGUARD 1
 #define NUM_THREADS 4
 
+double max_bw;
 int global_width, global_height;
 cv::Mat frame;
 cv::Mat* roi;
-
-int get_avg_bw_done = 0;
-double avg_bw[NUM_THREADS] = {0};
 
 // För cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
@@ -51,35 +46,6 @@ void send_data_to_file(double exec_time0, double exec_time1, double exec_time2, 
 	file.open("test.cvs", std::ios::app );
 	file << values_str;
 	file.close();
-}
-
-void get_avg_bw_usage()
-{
-	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-	std::fill(avg_bw, avg_bw + NUM_THREADS, 0);
-	double res[NUM_THREADS] = {0};
-	//int cnt = 0;
-
-	while(get_avg_bw_done < 4)
-	{
-		get_bw_from_memguard(res);
-		for(int i = 0; i < NUM_THREADS; i++)
-		{
-			//avg_bw[i] += res[i];
-			//cnt++;	
-			
-			if(res[i] > avg_bw[i])
-				avg_bw[i] = res[i];
-
-			// if(std::chrono::steady_clock::now() - start_time > std::chrono::milliseconds(10))
-			// {
-			// 	break;
-			// }
-		}
-	}
-	// for(int i = 0; i < num_threads; i++)
-	// 		avg_bw[i] /= cnt;
-	get_avg_bw_done = 0;
 }
 
 int stick_this_thread_to_core(int core_id)
@@ -123,11 +89,10 @@ void* feature_thread(void* threadArg)
 	std::vector<cv::KeyPoint> keypoints;
 
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
-	cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
-	//cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
+	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
+	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
-	get_avg_bw_done++;
 
 	// End timer
 	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
@@ -155,7 +120,6 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-
 	std::ofstream file;
 	file.open("test.cvs", std::ios::trunc);
 	file.close();
@@ -173,20 +137,25 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	// Increase bw for each core to not interfere with the bandwidth measurement
-	assign_bw_MB(100000, 100000, 100000, 100000);
+	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
 #endif
 
-	measure_max_bw(); 	// Measure and set max_bw
-	// max_bw = 7500; 		/*  For testing purposes we usually set max_bw lower than the measured 
+	//max_bw = measure_max_bw(); 	// Measure and set max_bw
+	max_bw = 12000; 		/*  For testing purposes we can set max_bw lower than the measured 
 	// 						value to prevent other processes from affecting the result. */
 
 #if USE_MEMGUARD
 	set_exclusive_mode(0);	// Disable best-effort
 	{
-		int new_bw = max_bw / 4;
-		assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
-		for(int i = 0; i < NUM_THREADS; i++)
-			thread_info[i].guaranteed_bw = new_bw / max_bw;
+		// double new_bw = max_bw / 4.0;
+		// assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
+		// for(int i = 0; i < NUM_THREADS; i++)
+		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
+
+		// För att när en viss kärna svälter
+		double new_bw0 = 0.25;
+		double other_new = (1 - new_bw0) / 3;
+		assign_bw(other_new, other_new, new_bw0, other_new);
 	}
 #endif
 
@@ -217,9 +186,6 @@ int main(int argc, char** argv)
 			}
 		}
 
-		// Measure bandwidth while threads are running
-		//get_avg_bw_usage();
-
 		// Join threads
 		for (int i = 0; i < NUM_THREADS; i++) {
 			if(pthread_join(threads[i], &status) != 0) {
@@ -233,10 +199,6 @@ int main(int argc, char** argv)
 		double fps = cv::getTickFrequency() / ticks;
 		print_thread_info(thread_info, NUM_THREADS);
 		std::cout << "FPS: " << fps << "\n\n";
-		
-		// Just for testing, these values should be added to thread_info.used_bw if working correctly
-		//for(int i = 0; i < NUM_THREADS; i++)
-		//	std::cout << "AVG_BW: " << avg_bw[i] << "\n";
 
 		total_tick_count += ticks;
 		num_frames++;
@@ -250,8 +212,9 @@ int main(int argc, char** argv)
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
 		send_data_to_file(thread_info[0].execution_time,thread_info[1].execution_time,thread_info[2].execution_time,thread_info[3].execution_time);
+
 #if USE_MEMGUARD
-		partition_bandwidth(thread_info, NUM_THREADS);
+		//partition_bandwidth(thread_info, NUM_THREADS);
 #endif
 	}
 
