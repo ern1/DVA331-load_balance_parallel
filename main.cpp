@@ -18,6 +18,7 @@
 #include <fstream>
 
 #define USE_MEMGUARD 1
+#define USE_DYNAMIC_PARTITIONING 0
 #define NUM_THREADS 4
 
 double max_bw;
@@ -213,8 +214,8 @@ int main(int argc, char** argv)
 		//cv::imshow("Video", out);
 		send_data_to_file(thread_info[0].execution_time,thread_info[1].execution_time,thread_info[2].execution_time,thread_info[3].execution_time);
 
-#if USE_MEMGUARD
-		//partition_bandwidth(thread_info, max_bw, NUM_THREADS);
+#if USE_MEMGUARD && USE_DYNAMIC_PARTITIONING
+		partition_bandwidth(thread_info, max_bw, NUM_THREADS);
 #endif
 	}
 
