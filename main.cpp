@@ -35,7 +35,7 @@ const cv::Scalar COLORS[4] = {
 	cv::Scalar(255, 0, 255)
 };
 
-void send_data_to_file(double exec_time0, double exec_time1, double exec_time2, double exec_time3)
+void send_thread_exec_time_to_file(double exec_time0, double exec_time1, double exec_time2, double exec_time3)
 {
 	if (!system(NULL))
 		exit(EXIT_FAILURE);
@@ -45,8 +45,19 @@ void send_data_to_file(double exec_time0, double exec_time1, double exec_time2, 
 		 exec_time0, exec_time1, exec_time2, exec_time3);
 
 	std::ofstream file;
-	file.open("test.cvs", std::ios::app);
+	file.open("thread_exec.cvs", std::ios::app);
 	file << values_str;
+	file.close();
+}
+
+void send_total_exec_time_to_file(double exec_time)
+{
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
+
+	std::ofstream file;
+	file.open("total_exec.cvs", std::ios::app);
+	file << exec_time;
 	file.close();
 }
 
@@ -213,7 +224,8 @@ int main(int argc, char** argv)
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
-		send_data_to_file(thread_info[0].execution_time, thread_info[1].execution_time, thread_info[2].execution_time, thread_info[3].execution_time);
+		send_thread_exec_time_to_file(thread_info[0].execution_time, thread_info[1].execution_time,
+					      thread_info[2].execution_time, thread_info[3].execution_time);
 
 #if USE_MEMGUARD && USE_DYNAMIC_PARTITIONING
 		partition_bandwidth(thread_info, max_bw, NUM_THREADS);
@@ -224,7 +236,9 @@ int main(int argc, char** argv)
   	cv::destroyAllWindows();
 
 	// Print total exection time (time from fork to join for all frames)
-	std::cout << "Execution time: " << (total_tick_count / cv::getTickFrequency()) << std::endl;
+	double exec_time = total_tick_count / cv::getTickFrequency();
+	send_total_exec_time_to_file(exec_time);
+	std::cout << "Execution time: " << exec_time << std::endl;
 	
 	return 0;
 }
