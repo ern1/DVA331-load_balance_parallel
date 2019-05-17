@@ -1,6 +1,6 @@
 src = "jellyfish40.mkv"
 
-test: clean compile run
+default: clean compile run
 
 compile:
 	@mkdir -m 777 -p /tmp/test123
@@ -11,3 +11,10 @@ run:
 
 clean:
 	@rm -f /tmp/test123/*
+	
+test: clean compile
+        set -e ; \
+        for i in 1 2 3 4 5 ; do \
+                @echo Running test $(i) ; \
+                @/tmp/test123/main $(src) ; \
+        done
