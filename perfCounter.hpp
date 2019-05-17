@@ -65,3 +65,28 @@ void stop_counter(int core_id)
 }
 
 #endif
+
+
+/*
+event = perf_event_create_kernel_counter(&sched_perf_hw_attr, cpu, NULL, NULL);
+
+if (!event)
+    return NULL;
+
+if (IS_ERR(event)) {
+    // vary the KERN level based on the returned errno
+    if (PTR_ERR(event) == -EOPNOTSUPP)
+        pr_info("cpu%d. not supported\n", cpu);
+    else if (PTR_ERR(event) == -ENOENT)
+        pr_info("cpu%d. not h/w event\n", cpu);
+    else
+        pr_err("cpu%d. unable to create perf event: %ld\n",
+                cpu, PTR_ERR(event));
+    return NULL;
+}
+
+// This is needed since 4.1?
+perf_event_enable(event);
+event = perf_event_create_kernel_counter(&sched_perf_hw_attr, cpu, NULL, NULL);
+perf_event_enable(event);
+*/

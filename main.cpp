@@ -16,6 +16,7 @@
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
 #include <fstream>
+#include <sched.h>
 
 #define USE_MEMGUARD 1
 #define USE_DYNAMIC_PARTITIONING 0
@@ -212,7 +213,7 @@ int main(int argc, char** argv)
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
-		send_data_to_file(thread_info[0].execution_time,thread_info[1].execution_time,thread_info[2].execution_time,thread_info[3].execution_time);
+		send_data_to_file(thread_info[0].execution_time, thread_info[1].execution_time, thread_info[2].execution_time, thread_info[3].execution_time);
 
 #if USE_MEMGUARD && USE_DYNAMIC_PARTITIONING
 		partition_bandwidth(thread_info, max_bw, NUM_THREADS);
