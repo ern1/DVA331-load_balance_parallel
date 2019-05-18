@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -137,10 +139,12 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	std::ofstream file;
-	file.open("test.cvs", std::ios::trunc);
-	file.close();
-
+	{
+		time_t now = time(0);
+		struct tm *ltm = localtime(&now);
+		snprintf(program_start_time, sizeof(program_start_time), "%d_%d_%d", ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
+	}
+	umask(0777);
 	init_counters(NUM_THREADS);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	cv::VideoCapture cap(argv[1]);
@@ -153,6 +157,9 @@ int main(int argc, char** argv)
 	}
 
 #if USE_MEMGUARD
+	// Disable best-effort
+	set_exclusive_mode(0);
+	
 	// Increase bw for each core to not interfere with the bandwidth measurement
 	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
 #endif
@@ -162,7 +169,6 @@ int main(int argc, char** argv)
 	// 						value to prevent other processes from affecting the result. */
 
 #if USE_MEMGUARD
-	set_exclusive_mode(0);	// Disable best-effort
 	{
 		// double new_bw = max_bw / 4.0;
 		// assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
