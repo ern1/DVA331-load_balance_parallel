@@ -179,6 +179,7 @@ void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 	for(int i = 0; i < num_threads; i++)
 	{
 		th[i].guaranteed_bw = (used_wma_exec_time[i] / tot_exec_time);
+		//th[i].guaranteed_bw = (used_wma_bw[i] / tot_bw);
 	}
 	
 	/* Partition bandwidth */

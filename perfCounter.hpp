@@ -14,11 +14,20 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
-static perf_event_attr event_attr;
+static struct perf_event_attr event_attr;
 static int* fd;
+static int num_fd;
 
-void init_perf_events(int num_cores)
+static int perf_event_open(pid_t pid, int cpu, int grp_fd, unsigned long flags)
 {
+    return syscall(__NR_perf_event_open, &event_attr, pid, cpu, grp_fd, flags);
+}
+
+void init_counters(int num_cores)
+{
+    fd = new int[num_cores];
+    num_fd = num_cores;
+
     /*  http://web.eece.maine.edu/~vweaver/projects/perf_events/perf_event_open.html */
     memset(&event_attr, 0, sizeof(struct perf_event_attr));
 	event_attr.type             = PERF_TYPE_HARDWARE;
@@ -27,25 +36,22 @@ void init_perf_events(int num_cores)
     //event_attr.config           = PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
 	event_attr.size             = sizeof(struct perf_event_attr);
     event_attr.pinned           = 1;  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
-	event_attr.disabled         = 0;  // Start counter as enabled (= 0)
-	event_attr.exclude_kernel   = 1;  // Don't count events that happen in kernel-space (= 1)
+	event_attr.disabled         = 0;
+    
+    for(int i = 0; i < num_cores; i++)
+    {
+        // pid == -1, cpu >= 0 - Measures all processes/threads on the specified CPU.
+        fd[i] = perf_event_open(-1, i, -1, 0);
 
-    fd = new int[num_cores];
+        if(fd[i] < 0)
+            perror("Error opening performance counter");
+    }
 }
 
-static int perf_event_open(pid_t pid, int cpu, int grp_fd, unsigned long flags)
+void reset_counter(int core_id)
 {
-    return syscall(__NR_perf_event_open, &event_attr, pid, cpu, grp_fd, flags);
-}
-
-// Returns a file descriptor that allows measuring performance information
-void start_counter(int core_id)
-{
-    // pid == -1, cpu >= 0 - Measures all processes/threads on the specified CPU.
-    fd[core_id] = perf_event_open(-1, core_id, -1, 0);
-
-    if(fd < 0)
-        perror("Error opening performance counter");
+    ioctl(fd[core_id], PERF_EVENT_IOC_RESET, 0);
+    //ioctl(fd[core_id], PERF_EVENT_IOC_ENABLE, 0);
 }
 
 // vet inte om det behöver vara en unsigned long long
@@ -58,10 +64,13 @@ unsigned long long read_counter(int core_id)
     return rv;
 }
 
-void stop_counter(int core_id)
+void stop_counters()
 {
-    if(close(fd[core_id]) != 0)
+    for(int i = 0; i < num_fd; i++)
+    {
+        if(close(fd[i]) != 0)
         perror("Error stopping performance counter");
+    }
 }
 
 #endif

@@ -21,15 +21,15 @@ sudo make install
 sudo ldconfig -v
 
 
------------- Install Papi ------------:
+------------ Install Papi (kör perf nu) ------------:
 http://icl.utk.edu/papi/software/
 
-Kan eventuellt behöva köra följande:
+Kör följande:
 sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
 
 
 ------------ Install memguard ------------:
-(used forked version or whatever we did)
+https://github.com/heechul/memguard
 
 
 ------------ Other ------------:

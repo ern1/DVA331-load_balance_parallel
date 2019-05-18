@@ -6,26 +6,26 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 #include <stdio.h>
-#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <math.h>
+#include <iostream>
+#include <fstream>
 #include <chrono>
-#include <pthread.h>
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
-#include <fstream>
-#include <sched.h>
 
-#define USE_MEMGUARD 1
+#define USE_MEMGUARD 0
 #define USE_DYNAMIC_PARTITIONING 0
 #define NUM_THREADS 4
+#define STR_SIZE 1000
 
 double max_bw;
 int global_width, global_height;
 cv::Mat frame;
 cv::Mat* roi;
+char program_start_time[STR_SIZE] = {0};
 
 // För cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
@@ -44,8 +44,11 @@ void send_thread_exec_time_to_file(double exec_time0, double exec_time1, double 
 	snprintf(values_str, sizeof(values_str), "%f,%f,%f,%f\n",
 		 exec_time0, exec_time1, exec_time2, exec_time3);
 
+	char file_name[STR_SIZE] = {0};
+	snprintf(file_name, sizeof(file_name), "%s%s%s", "thread_exec_", program_start_time, ".csv");
+
 	std::ofstream file;
-	file.open("thread_exec.cvs", std::ios::app);
+	file.open(file_name, std::ios::app);
 	file << values_str;
 	file.close();
 }
@@ -56,8 +59,8 @@ void send_total_exec_time_to_file(double exec_time)
 		exit(EXIT_FAILURE);
 
 	std::ofstream file;
-	file.open("total_exec.cvs", std::ios::app);
-	file << exec_time;
+	file.open("total_exec_time.csv", std::ios::app);
+	file << program_start_time << " - Execution time: " << exec_time << '\n';
 	file.close();
 }
 
@@ -82,13 +85,12 @@ void* feature_thread(void* threadArg)
 {
 	ThreadInfo* thread_info = (ThreadInfo*)threadArg;
 	stick_this_thread_to_core(thread_info->core_id);
-	start_counter(thread_info->core_id);
+	reset_counter(thread_info->core_id);
 
 	// Start timer
-	//long long unsigned start_time = time_ns();
 	long long start_cycle = cv::getTickCount();
 
-	// ROI
+	// Set ROI
 	int local_x = 0, local_y;
 	if (thread_info->core_id == 0)
 		local_y = 0;
@@ -96,11 +98,11 @@ void* feature_thread(void* threadArg)
 		local_y = (int)global_height / NUM_THREADS * thread_info->core_id - 1;
 	int local_width = global_width;
 	int local_height = (int)global_height / NUM_THREADS;
-	
 	cv::Rect roi_rect = cv::Rect(local_x, local_y, local_width, local_height);
 	roi[thread_info->core_id] = frame(roi_rect);
-	std::vector<cv::KeyPoint> keypoints;
 
+	// 
+	std::vector<cv::KeyPoint> keypoints;
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
 	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
 	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
@@ -108,19 +110,22 @@ void* feature_thread(void* threadArg)
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 
 	// End timer
-	//thread_info->execution_time = (double)(time_ns() - start_time) * 0.000001;
 	thread_info->execution_time = (double)(cv::getTickCount() - start_cycle) / cv::getTickFrequency();
 	thread_info->tot_exec_time += thread_info->execution_time;
 	
 	// Read performance counters and calculate used bandwidth
 	unsigned long long cache_misses = read_counter(thread_info->core_id);
-	stop_counter(thread_info->core_id);
+	//stop_counter(thread_info->core_id);
 	thread_info->used_bw = calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) / max_bw;
-	//std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
+	std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
 }
 
 int main(int argc, char** argv)
 {
+	time_t now = time(0);
+	struct tm *ltm = localtime(&now);
+	snprintf(program_start_time, sizeof(program_start_time), "%d_%d_%d", ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
+	
 	void* status;
 	roi = new cv::Mat[NUM_THREADS];
 	ThreadInfo* thread_info = new ThreadInfo[NUM_THREADS];
@@ -137,7 +142,7 @@ int main(int argc, char** argv)
 	file.open("test.cvs", std::ios::trunc);
 	file.close();
 
-	init_perf_events(NUM_THREADS);
+	init_counters(NUM_THREADS);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
 	cv::VideoCapture cap(argv[1]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
@@ -166,7 +171,7 @@ int main(int argc, char** argv)
 		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
 
 		// För att se när en viss kärna svälter
-		double new_bw0 = 0.6;
+		double new_bw0 = 0.10;
 		double other_new = (1 - new_bw0) / 3;
 		assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
 	}
@@ -232,6 +237,7 @@ int main(int argc, char** argv)
 #endif
 	}
 
+	stop_counters();
 	cap.release();
   	cv::destroyAllWindows();
 
