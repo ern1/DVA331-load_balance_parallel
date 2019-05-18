@@ -43,7 +43,6 @@ double measure_max_bw(){
 	if (!system(NULL))
 		exit(EXIT_FAILURE);
 
-	// Measure bandwidth and set max_bw
 	int status = system("mbw 500 -t 2 | grep 'AVG' | grep -oE '\\-?[0-9]+\\.[0-9]+' | tail -1 > temp");
 	if(status < 0)
 		printf("%s\n",strerror(errno));

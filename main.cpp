@@ -165,7 +165,7 @@ int main(int argc, char** argv)
 		// for(int i = 0; i < NUM_THREADS; i++)
 		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
 
-		// För att när en viss kärna svälter
+		// För att se när en viss kärna svälter
 		double new_bw0 = 0.6;
 		double other_new = (1 - new_bw0) / 3;
 		assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
