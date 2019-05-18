@@ -16,7 +16,7 @@
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
 
-#define USE_MEMGUARD 0
+#define USE_MEMGUARD 1
 #define USE_DYNAMIC_PARTITIONING 0
 #define NUM_THREADS 4
 #define STR_SIZE 1000
@@ -60,7 +60,7 @@ void send_total_exec_time_to_file(double exec_time)
 
 	std::ofstream file;
 	file.open("total_exec_time.csv", std::ios::app);
-	file << program_start_time << " - Execution time: " << exec_time << '\n';
+	file << program_start_time << " - Execution time: " << exec_time << ", " << "Max bandwidth: " << max_bw << '\n';
 	file.close();
 }
 

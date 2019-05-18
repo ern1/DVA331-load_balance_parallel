@@ -12,7 +12,7 @@ run:
 
 clean:
 	@rm -f /tmp/test123/*
-	@rm -f *csprogram_start_time
+	@rm -f *.csv
 	
 test: clean compile
 	@set -e ; \
