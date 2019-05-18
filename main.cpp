@@ -115,9 +115,8 @@ void* feature_thread(void* threadArg)
 	
 	// Read performance counters and calculate used bandwidth
 	unsigned long long cache_misses = read_counter(thread_info->core_id);
-	//stop_counter(thread_info->core_id);
 	thread_info->used_bw = calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) / max_bw;
-	std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
+	//std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -158,8 +157,8 @@ int main(int argc, char** argv)
 	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
 #endif
 
-	//max_bw = measure_max_bw(); 	// Measure and set max_bw
-	max_bw = 12000; 		/*  For testing purposes we can set max_bw lower than the measured 
+	max_bw = measure_max_bw(); 	// Measure and set max_bw
+	//max_bw = 12000; 		/*  For testing purposes we can set max_bw lower than the measured 
 	// 						value to prevent other processes from affecting the result. */
 
 #if USE_MEMGUARD
@@ -171,7 +170,7 @@ int main(int argc, char** argv)
 		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
 
 		// För att se när en viss kärna svälter
-		double new_bw0 = 0.10;
+		double new_bw0 = 0.25;
 		double other_new = (1 - new_bw0) / 3;
 		assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
 	}
@@ -230,7 +229,7 @@ int main(int argc, char** argv)
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
 		send_thread_exec_time_to_file(thread_info[0].execution_time, thread_info[1].execution_time,
-					      thread_info[2].execution_time, thread_info[3].execution_time);
+					    				thread_info[2].execution_time, thread_info[3].execution_time);
 
 #if USE_MEMGUARD && USE_DYNAMIC_PARTITIONING
 		partition_bandwidth(thread_info, max_bw, NUM_THREADS);

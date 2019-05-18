@@ -69,7 +69,7 @@ void stop_counters()
     for(int i = 0; i < num_fd; i++)
     {
         if(close(fd[i]) != 0)
-        perror("Error stopping performance counter");
+            perror("Error stopping performance counter");
     }
 }
 
