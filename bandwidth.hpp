@@ -130,7 +130,11 @@ void assign_bw_MB(double core1_bw, double core2_bw, double core3_bw, double core
 inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execution_time)
 {
 	unsigned long long bw_b = (double)l3_misses * cache_line_size;
-	return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
+	
+	// return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
+	
+	double divisor = execution_time * 1024.0 * 1024.0;
+	return (bw_b + (divisor - 1.0)) / divisor;
 }
 
 // Parition bandwidth between different cores

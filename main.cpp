@@ -176,7 +176,7 @@ int main(int argc, char** argv)
 		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
 
 		// För att se när en viss kärna svälter
-		double new_bw0 = 0.25;
+		double new_bw0 = 0.10;
 		double other_new = (1 - new_bw0) / 3;
 		assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
 	}
@@ -222,6 +222,10 @@ int main(int argc, char** argv)
 		double fps = cv::getTickFrequency() / ticks;
 		print_thread_info(thread_info, NUM_THREADS);
 		std::cout << "FPS: " << fps << "\n\n";
+		double tot_used_bw = 0;		
+		for(int i = 0; i < NUM_THREADS; i++)
+			tot_used_bw += thread_info[i].used_bw;
+		std::cout << "Total used bw: " << tot_used_bw * 100 << "%\n";
 
 		total_tick_count += ticks;
 		num_frames++;
