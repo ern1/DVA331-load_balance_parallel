@@ -16,7 +16,8 @@ clean:
 	
 test: clean compile
 	@set -e ; \
-	for i in 1 2 3 4 5 ; do \
+	for i in 1 2 3 4 ; do \
 		printf "\n-------- Starting new test --------\n\n" ; \
 		/tmp/test123/main $(src) ; \
+		sleep 1 ; \
 	done

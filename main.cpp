@@ -19,7 +19,7 @@
 #include "bandwidth.hpp"
 
 #define USE_MEMGUARD 1
-#define USE_DYNAMIC_PARTITIONING 0
+#define USE_DYNAMIC_PARTITIONING 1
 #define NUM_THREADS 4
 #define STR_SIZE 1000
 
@@ -28,6 +28,8 @@ int global_width, global_height;
 cv::Mat frame;
 cv::Mat* roi;
 char program_start_time[STR_SIZE] = {0};
+
+double tot_tot_used_bw = 0; // temp
 
 // För cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
@@ -55,6 +57,20 @@ void send_thread_exec_time_to_file(double exec_time0, double exec_time1, double 
 	file.close();
 }
 
+void send_frame_exec_time_to_file(double exec_time)
+{
+	if (!system(NULL))
+		exit(EXIT_FAILURE);
+
+	char file_name[STR_SIZE] = {0};
+	snprintf(file_name, sizeof(file_name), "%s%s%s", "frame_exec_", program_start_time, ".csv");
+
+	std::ofstream file;
+	file.open(file_name, std::ios::app);
+	file << exec_time << '\n';
+	file.close();
+}
+
 void send_total_exec_time_to_file(double exec_time)
 {
 	if (!system(NULL))
@@ -62,7 +78,7 @@ void send_total_exec_time_to_file(double exec_time)
 
 	std::ofstream file;
 	file.open("total_exec_time.csv", std::ios::app);
-	file << program_start_time << " - Execution time: " << exec_time << ", " << "Max bandwidth: " << max_bw << '\n';
+	file << program_start_time << " - Execution time: " << exec_time << ", Average total used bw (all cores): " << tot_tot_used_bw << ", Max bandwidth: " << max_bw << '\n';
 	file.close();
 }
 
@@ -118,6 +134,7 @@ void* feature_thread(void* threadArg)
 	// Read performance counters and calculate used bandwidth
 	unsigned long long cache_misses = read_counter(thread_info->core_id);
 	thread_info->used_bw = calculate_bandwidth_MBs(cache_misses, thread_info->execution_time) / max_bw;
+	thread_info->tot_used_bw += thread_info->used_bw;
 	//std::cout << "core_id: " << thread_info->core_id << ", cache misses: " << cache_misses << std::endl;
 }
 
@@ -158,7 +175,10 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	// Disable best-effort
-	set_exclusive_mode(0);
+	//set_exclusive_mode(0);
+
+	// Use best-effort
+	set_exclusive_mode(2);
 	
 	// Increase bw for each core to not interfere with the bandwidth measurement
 	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
@@ -170,15 +190,15 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	{
-		// double new_bw = max_bw / 4.0;
-		// assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
-		// for(int i = 0; i < NUM_THREADS; i++)
-		// 	thread_info[i].guaranteed_bw = new_bw / max_bw;
+		double new_bw = max_bw / 4.0;
+		assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
+		for(int i = 0; i < NUM_THREADS; i++)
+			thread_info[i].guaranteed_bw = new_bw / max_bw;
 
 		// För att se när en viss kärna svälter
-		double new_bw0 = 0.10;
-		double other_new = (1 - new_bw0) / 3;
-		assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
+		// const double new_bw0 = 0.25;
+		// const double other_new = (1 - new_bw0) / 3.0;
+		// assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
 	}
 #endif
 
@@ -226,6 +246,7 @@ int main(int argc, char** argv)
 		for(int i = 0; i < NUM_THREADS; i++)
 			tot_used_bw += thread_info[i].used_bw;
 		std::cout << "Total used bw: " << tot_used_bw * 100 << "%\n";
+		tot_tot_used_bw += tot_used_bw;
 
 		total_tick_count += ticks;
 		num_frames++;
@@ -238,6 +259,7 @@ int main(int argc, char** argv)
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
 		//cv::imshow("Video", out);
+		send_frame_exec_time_to_file(ticks / cv::getTickFrequency());
 		send_thread_exec_time_to_file(thread_info[0].execution_time, thread_info[1].execution_time,
 					    				thread_info[2].execution_time, thread_info[3].execution_time);
 
@@ -254,6 +276,8 @@ int main(int argc, char** argv)
 	double exec_time = total_tick_count / cv::getTickFrequency();
 	send_total_exec_time_to_file(exec_time);
 	std::cout << "Execution time: " << exec_time << std::endl;
-	
+
+	//std::cout << "Thread 2 - Avg exec time: " << thread_info[2].tot_exec_time / 100 << ", Avg used bw: " << thread_info[2].tot_used_bw << ", Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
+	std::cout << "Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
 	return 0;
 }

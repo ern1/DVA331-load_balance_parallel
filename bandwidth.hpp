@@ -20,6 +20,7 @@ struct ThreadInfo {
 	int core_id;
 	double execution_time; 		// in seconds
 	double tot_exec_time;		// in seconds
+	double tot_used_bw; // temp
 
 	double guaranteed_bw; 		// a fraction of max_bw
 	double used_bw;				// a fraction of max_bw
@@ -27,7 +28,7 @@ struct ThreadInfo {
 	std::vector<double> prev_used_bw;
 	std::vector<double> prev_used_exec_time;
 
-	ThreadInfo() : guaranteed_bw(0.0), tot_exec_time(0.0) {}
+	ThreadInfo() : guaranteed_bw(0.0), tot_exec_time(0.0), tot_used_bw(0.0) {}
 };
 
 inline void print_thread_info(const ThreadInfo* th, int size){
@@ -131,7 +132,7 @@ inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execu
 {
 	unsigned long long bw_b = (double)l3_misses * cache_line_size;
 	
-	// return (double)(bw_b * 1.1920928955078125e-7) / execution_time;
+	//return (double)(bw_b / 1024 / 1024) / execution_time;
 	
 	double divisor = execution_time * 1024.0 * 1024.0;
 	return (bw_b + (divisor - 1.0)) / divisor;
@@ -182,13 +183,14 @@ void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 	/* Calculate how to partition bandwidth between different cores */
 	for(int i = 0; i < num_threads; i++)
 	{
-		th[i].guaranteed_bw = (used_wma_exec_time[i] / tot_exec_time);
-		//th[i].guaranteed_bw = (used_wma_bw[i] / tot_bw);
+		
+		double new_bw = (used_wma_exec_time[i] / tot_exec_time);
+		//th[i].guaranteed_bw = new_bw;
+		th[i].guaranteed_bw = new_bw < 0.30 ? new_bw : 0.30; // Give one core maximum 30% of max bandwidth
 	}
 	
 	/* Partition bandwidth */
 	assign_bw(bw, th[0].guaranteed_bw, th[1].guaranteed_bw, th[2].guaranteed_bw, th[3].guaranteed_bw);
-	//assign_bw_MB(new_core_bw[0], new_core_bw[1], new_core_bw[2], new_core_bw[3]);
 }
 
 #endif
