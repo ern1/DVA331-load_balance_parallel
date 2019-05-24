@@ -35,7 +35,7 @@ void init_counters(int num_cores)
     //event_attr.type             = PERF_TYPE_HW_CACHE;
     //event_attr.config           = PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
 	event_attr.size             = sizeof(struct perf_event_attr);
-    event_attr.pinned           = 1;  // Counter should always be on the CPU if at all possible (= 1) ---> Vettefan om denna ska vara satt till 1..
+    event_attr.pinned           = 1;  // Counter should always be on the CPU if at all possible (Osäker på vad denna gör)
 	event_attr.disabled         = 0;
     
     for(int i = 0; i < num_cores; i++)
@@ -57,7 +57,7 @@ void reset_counter(int core_id)
 // vet inte om det behöver vara en unsigned long long
 unsigned long long read_counter(int core_id)
 {
-    unsigned long long rv;
+	unsigned long long rv;
     if(read(fd[core_id], &rv, sizeof(rv)) == 0)
         perror("Error reading performance counter");
 
@@ -74,28 +74,3 @@ void stop_counters()
 }
 
 #endif
-
-
-/*
-event = perf_event_create_kernel_counter(&sched_perf_hw_attr, cpu, NULL, NULL);
-
-if (!event)
-    return NULL;
-
-if (IS_ERR(event)) {
-    // vary the KERN level based on the returned errno
-    if (PTR_ERR(event) == -EOPNOTSUPP)
-        pr_info("cpu%d. not supported\n", cpu);
-    else if (PTR_ERR(event) == -ENOENT)
-        pr_info("cpu%d. not h/w event\n", cpu);
-    else
-        pr_err("cpu%d. unable to create perf event: %ld\n",
-                cpu, PTR_ERR(event));
-    return NULL;
-}
-
-// This is needed since 4.1?
-perf_event_enable(event);
-event = perf_event_create_kernel_counter(&sched_perf_hw_attr, cpu, NULL, NULL);
-perf_event_enable(event);
-*/
