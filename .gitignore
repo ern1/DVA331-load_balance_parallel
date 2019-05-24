@@ -38,12 +38,6 @@
 # VS Code
 .vscode/ipch/*
 
-# Memguard 
-*.ko
-
 # Other
 temp
-*.cvs
 *.csv
-*.png
-*.zip
