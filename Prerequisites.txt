@@ -1,4 +1,4 @@
------------- Install OpenCV ------------: 
+------------ Install OpenCV ------------
 (https://docs.opencv.org/3.4.5/d7/d9f/tutorial_linux_install.html)
 sudo apt-get install build-essential
 sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
@@ -20,17 +20,13 @@ sudo make install
 
 sudo ldconfig -v
 
-
------------- Install Papi (kör perf nu) ------------:
-http://icl.utk.edu/papi/software/
-
-Kör följande:
+------------ Prepare for perf ------------
 sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
 
-
------------- Install memguard ------------:
+------------ Install memguard ------------
 https://github.com/heechul/memguard
 
+Set kernel boot parameters [vilka och hur?]
 
------------- Other ------------:
-(något för att mäta bandbredd?)
+------------ Other ------------
+?
