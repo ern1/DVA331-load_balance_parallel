@@ -29,7 +29,7 @@ cv::Mat frame;
 cv::Mat* roi;
 char program_start_time[STR_SIZE] = {0};
 
-double tot_tot_used_bw = 0; // temp
+double tot_tot_used_bw = 0; // total bw for all threads and every frame, used to calculate average bw usage (temp)
 
 // För cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
@@ -119,7 +119,7 @@ void* feature_thread(void* threadArg)
 	cv::Rect roi_rect = cv::Rect(local_x, local_y, local_width, local_height);
 	roi[thread_info->core_id] = frame(roi_rect);
 
-	// 
+	// Process ROI of frame
 	std::vector<cv::KeyPoint> keypoints;
 	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
 	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
@@ -140,16 +140,6 @@ void* feature_thread(void* threadArg)
 
 int main(int argc, char** argv)
 {
-	time_t now = time(0);
-	struct tm *ltm = localtime(&now);
-	snprintf(program_start_time, sizeof(program_start_time), "%d_%d_%d", ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
-	
-	void* status;
-	roi = new cv::Mat[NUM_THREADS];
-	ThreadInfo* thread_info = new ThreadInfo[NUM_THREADS];
-	double total_tick_count = 0;
-	int num_frames = 0;
-
 	// Check if user is root
 	if (getuid()) {
 		std::cout << "User is not root" << std::endl;
@@ -161,9 +151,16 @@ int main(int argc, char** argv)
 		struct tm *ltm = localtime(&now);
 		snprintf(program_start_time, sizeof(program_start_time), "%d_%d_%d", ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
 	}
+	
 	umask(0777);
 	init_counters(NUM_THREADS);
 	std::cout << std::fixed << std::setprecision(3) << std::left;
+	
+	void* status;
+	roi = new cv::Mat[NUM_THREADS];
+	ThreadInfo* thread_info = new ThreadInfo[NUM_THREADS];
+	double total_tick_count = 0;
+	int num_frames = 0;
 	cv::VideoCapture cap(argv[1]);
   	cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('H', '2', '6', '4'));
 
@@ -175,18 +172,17 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	// Disable best-effort
-	//set_exclusive_mode(0);
+	set_exclusive_mode(0);
 
 	// Use best-effort
-	set_exclusive_mode(2);
+	//set_exclusive_mode(2);
 	
 	// Increase bw for each core to not interfere with the bandwidth measurement
 	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
 #endif
 
-	max_bw = measure_max_bw(); 	// Measure and set max_bw
-	//max_bw = 12000; 		/*  For testing purposes we can set max_bw lower than the measured 
-	// 						value to prevent other processes from affecting the result. */
+	// Measure and set max_bw
+	max_bw = measure_max_bw();
 
 #if USE_MEMGUARD
 	{
@@ -225,7 +221,7 @@ int main(int argc, char** argv)
 
 			if(pthread_create(&threads[i], NULL, feature_thread, (void*)&thread_info[i]) != 0) {
 				perror("thread create error");
-        		exit(1);
+				exit(1);
 			}
 		}
 
@@ -233,7 +229,7 @@ int main(int argc, char** argv)
 		for (int i = 0; i < NUM_THREADS; i++) {
 			if(pthread_join(threads[i], &status) != 0) {
 				perror("thread join error");
-            	exit(1);
+				exit(1);
 			}
 		}
 
@@ -242,16 +238,17 @@ int main(int argc, char** argv)
 		double fps = cv::getTickFrequency() / ticks;
 		print_thread_info(thread_info, NUM_THREADS);
 		std::cout << "FPS: " << fps << "\n\n";
-		double tot_used_bw = 0;		
+		
+		double tot_used_bw = 0; // Used bw for all threads	
 		for(int i = 0; i < NUM_THREADS; i++)
 			tot_used_bw += thread_info[i].used_bw;
 		std::cout << "Total used bw: " << tot_used_bw * 100 << "%\n";
+		
 		tot_tot_used_bw += tot_used_bw;
-
 		total_tick_count += ticks;
 		num_frames++;
 
-		// create image
+		// Create image
 		std::vector<cv::Mat> result_mat;
 		for (int i = 0; i < NUM_THREADS; i++)
 			result_mat.push_back(roi[i].clone());
@@ -272,11 +269,12 @@ int main(int argc, char** argv)
 	cap.release();
   	cv::destroyAllWindows();
 
-	// Print total exection time (time from fork to join for all frames)
+	// Calculate total execution time (time from fork to join for all frames)
 	double exec_time = total_tick_count / cv::getTickFrequency();
 	send_total_exec_time_to_file(exec_time);
+	
+	// Print stats
 	std::cout << "Execution time: " << exec_time << std::endl;
-
 	//std::cout << "Thread 2 - Avg exec time: " << thread_info[2].tot_exec_time / 100 << ", Avg used bw: " << thread_info[2].tot_used_bw << ", Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
 	std::cout << "Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
 	return 0;
