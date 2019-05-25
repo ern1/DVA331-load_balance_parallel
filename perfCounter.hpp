@@ -57,7 +57,7 @@ void reset_counter(int core_id)
 // vet inte om det behöver vara en unsigned long long
 unsigned long long read_counter(int core_id)
 {
-	unsigned long long rv;
+    unsigned long long rv;
     if(read(fd[core_id], &rv, sizeof(rv)) == 0)
         perror("Error reading performance counter");
 
