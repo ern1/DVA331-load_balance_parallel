@@ -60,6 +60,7 @@ double measure_max_bw(){
 	return measured_bw;
 } 
 
+// TODO: Ta bort denna.
 void get_bw_from_memguard(double* bw)
 {
 	if (!system(NULL))
@@ -80,8 +81,7 @@ void get_bw_from_memguard(double* bw)
 	f.close();
 }
 
-// höj till max, mät, sätt max_bw till uppmätta, fördela 1/4
-// use mode = 0 to disable best-effort
+// Used to enable/disable best-effort etc
 void set_exclusive_mode(int mode)
 {
 	if (!system(NULL))
@@ -132,7 +132,7 @@ inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execu
 {
 	unsigned long long bw_b = (double)l3_misses * cache_line_size;
 	
-	//return (double)(bw_b / 1024 / 1024) / execution_time;
+	//return (double)(bw_b / 1024 / 1024) / execution_time; // samma resultat som nedan nu när vi inte längre även delar med 8
 	
 	double divisor = execution_time * 1024.0 * 1024.0;
 	return (bw_b + (divisor - 1.0)) / divisor;
@@ -183,10 +183,9 @@ void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 	/* Calculate how to partition bandwidth between different cores */
 	for(int i = 0; i < num_threads; i++)
 	{
-		
 		double new_bw = (used_wma_exec_time[i] / tot_exec_time);
-		//th[i].guaranteed_bw = new_bw;
-		th[i].guaranteed_bw = new_bw < 0.30 ? new_bw : 0.30; // Give one core maximum 30% of max bandwidth
+		th[i].guaranteed_bw = new_bw;
+		//th[i].guaranteed_bw = new_bw < 0.30 ? new_bw : 0.30; // Give one core maximum 30% of max bandwidth
 	}
 	
 	/* Partition bandwidth */
