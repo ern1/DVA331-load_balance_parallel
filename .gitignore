@@ -31,9 +31,10 @@
 *.out
 *.app
 
-# Video files
+# Media files
 *.mp4
 *.mkv
+*.png
 
 # VS Code
 .vscode/ipch/*

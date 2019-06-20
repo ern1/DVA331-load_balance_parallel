@@ -10,17 +10,15 @@
 #include <numeric>
 
 #define STR_SIZE 1000
-#define BW_VAL_THRESHOLD 5
+#define BW_VAL_THRESHOLD 5 // For WMA used in partition_bandwidth()
 
 int cache_line_size = sysconf(_SC_LEVEL3_CACHE_LINESIZE);
-
-void assign_bw_MB(int core1_bw, int core2_bw, int core3_bw, int core4_bw);
 
 struct ThreadInfo {
 	int core_id;
 	double execution_time; 		// in seconds
 	double tot_exec_time;		// in seconds
-	double tot_used_bw; // temp
+	double tot_used_bw; 		// temp (for experiments)
 
 	double guaranteed_bw; 		// a fraction of max_bw
 	double used_bw;				// a fraction of max_bw
@@ -60,7 +58,7 @@ double measure_max_bw(){
 	return measured_bw;
 } 
 
-// TODO: Ta bort denna.
+// TODO: Doesn't work as intented. Remove.
 void get_bw_from_memguard(double* bw)
 {
 	if (!system(NULL))
@@ -127,17 +125,17 @@ void assign_bw_MB(double core1_bw, double core2_bw, double core3_bw, double core
 }
 
 // Calculate used bandwidth by using performance counters
-// (tog bort prefetch_misses)
 inline double calculate_bandwidth_MBs(unsigned long long l3_misses, double execution_time)
 {
 	unsigned long long bw_b = (double)l3_misses * cache_line_size;
 	
-	//return (double)(bw_b / 1024 / 1024) / execution_time; // samma resultat som nedan nu när vi inte längre även delar med 8
+	//return (double)(bw_b / 1024 / 1024) / execution_time; // Same result as below (blev fel med denna då vi även delade med 8)
 	
 	double divisor = execution_time * 1024.0 * 1024.0;
 	return (bw_b + (divisor - 1.0)) / divisor;
 }
 
+// TODO: used_bw, used_wma_bw etc are not used and can be removed.
 // Parition bandwidth between different cores
 void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 {
@@ -174,6 +172,7 @@ void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 		tot_bw += used_wma_bw[i];
 		tot_exec_time += used_wma_exec_time[i];
 
+		// EWMA?
 		// int n = th[i].runs < BW_VAL_THRESHOLD ? h[i].runs : BW_VAL_THRESHOLD;
 		// int m = 2 / (1 + n);
 		// th[i].ewma_bw = m * used_bw + (1 - m) * th[i].ewma_bw;
@@ -183,7 +182,8 @@ void partition_bandwidth(ThreadInfo* th, double bw, int num_threads)
 	/* Calculate how to partition bandwidth between different cores */
 	for(int i = 0; i < num_threads; i++)
 	{
-		double new_bw = (used_wma_exec_time[i] / tot_exec_time);
+		double new_bw = used_wma_exec_time[i] / tot_exec_time;
+
 		th[i].guaranteed_bw = new_bw;
 		//th[i].guaranteed_bw = new_bw < 0.30 ? new_bw : 0.30; // Give one core maximum 30% of max bandwidth
 	}

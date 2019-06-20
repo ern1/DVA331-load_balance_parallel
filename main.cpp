@@ -15,13 +15,16 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <string>
 #include "perfCounter.hpp"
 #include "bandwidth.hpp"
 
-#define USE_MEMGUARD 1
-#define USE_DYNAMIC_PARTITIONING 1
-#define NUM_THREADS 4
 #define STR_SIZE 1000
+
+#define USE_MEMGUARD 1
+#define USE_AMBP 1
+#define NUM_THREADS 4
+#define WRITE_STATS_TO_FILE 0
 
 double max_bw;
 int global_width, global_height;
@@ -31,7 +34,7 @@ char program_start_time[STR_SIZE] = {0};
 
 double tot_tot_used_bw = 0; // total bw for all threads and every frame, used to calculate average bw usage (temp)
 
-// För cv::drawKeypoints
+// For cv::drawKeypoints
 const cv::Scalar COLORS[4] = {
 	cv::Scalar(255, 0, 0),
 	cv::Scalar(0, 255, 0),
@@ -121,9 +124,7 @@ void* feature_thread(void* threadArg)
 
 	// Process ROI of frame
 	std::vector<cv::KeyPoint> keypoints;
-	//cv::Ptr<cv::ORB> detector = cv::ORB::create(10);
-	//cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create(5);
-	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(10);
+	cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create(1000);
 	detector->detect(roi[thread_info->core_id], keypoints, cv::Mat());
 	cv::drawKeypoints(roi[thread_info->core_id], keypoints, roi[thread_info->core_id], COLORS[thread_info->core_id], cv::DrawMatchesFlags::DEFAULT);
 
@@ -172,10 +173,10 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	// Disable best-effort
-	set_exclusive_mode(0);
+	//set_exclusive_mode(0);
 
 	// Use best-effort
-	//set_exclusive_mode(2);
+	set_exclusive_mode(2);
 	
 	// Increase bw for each core to not interfere with the bandwidth measurement
 	assign_bw_MB(100000.0, 100000.0, 100000.0, 100000.0);
@@ -186,15 +187,19 @@ int main(int argc, char** argv)
 
 #if USE_MEMGUARD
 	{
+		// Distribute bandwidth evenly among cores
 		double new_bw = max_bw / 4.0;
 		assign_bw_MB(new_bw, new_bw, new_bw, new_bw);
 		for(int i = 0; i < NUM_THREADS; i++)
 			thread_info[i].guaranteed_bw = new_bw / max_bw;
 
-		// För att se när en viss kärna svälter
+		// För Experiment 1 (point of saturation)
 		// const double new_bw0 = 0.25;
 		// const double other_new = (1 - new_bw0) / 3.0;
 		// assign_bw(max_bw, other_new, other_new, new_bw0, other_new);
+
+		// För experiment 3 (isolation)
+		//assign_bw(max_bw, 0.3, 0.3, 0.3, 0.1);
 	}
 #endif
 
@@ -255,14 +260,23 @@ int main(int argc, char** argv)
 		
 		cv::Mat out;
 		cv::vconcat(result_mat, out);
-		//cv::imshow("Video", out);
+		cv::imshow("Video", out);
+		
+		// För att spara alla bilder som png
+		/*std::stringstream fn_out;
+		fn_out << "keypoints" << "_" << num_frames << ".png";
+		cv::imwrite(fn_out.str(), out);*/
+
+#if WRITE_STATS_TO_FILE
 		send_frame_exec_time_to_file(ticks / cv::getTickFrequency());
 		send_thread_exec_time_to_file(thread_info[0].execution_time, thread_info[1].execution_time,
 					    				thread_info[2].execution_time, thread_info[3].execution_time);
+#endif
 
-#if USE_MEMGUARD && USE_DYNAMIC_PARTITIONING
+#if USE_MEMGUARD && USE_AMBP
 		partition_bandwidth(thread_info, max_bw, NUM_THREADS);
 #endif
+
 	}
 
 	stop_counters();
@@ -271,11 +285,15 @@ int main(int argc, char** argv)
 
 	// Calculate total execution time (time from fork to join for all frames)
 	double exec_time = total_tick_count / cv::getTickFrequency();
-	send_total_exec_time_to_file(exec_time);
-	
+
 	// Print stats
 	std::cout << "Execution time: " << exec_time << std::endl;
 	//std::cout << "Thread 2 - Avg exec time: " << thread_info[2].tot_exec_time / 100 << ", Avg used bw: " << thread_info[2].tot_used_bw << ", Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
 	std::cout << "Avg tot used bw (all cores): " << tot_tot_used_bw << ", max_bw: " << max_bw << std::endl;
+
+#if WRITE_STATS_TO_FILE
+	send_total_exec_time_to_file(exec_time);
+#endif
+
 	return 0;
 }

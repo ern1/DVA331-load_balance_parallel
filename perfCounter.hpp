@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <linux/unistd.h>
 #include <linux/perf_event.h>
-//#include <linux/smp.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
@@ -23,6 +22,7 @@ static int perf_event_open(pid_t pid, int cpu, int grp_fd, unsigned long flags)
     return syscall(__NR_perf_event_open, &event_attr, pid, cpu, grp_fd, flags);
 }
 
+// Initialize and start perf counters (one for each core)
 void init_counters(int num_cores)
 {
     fd = new int[num_cores];
@@ -48,13 +48,15 @@ void init_counters(int num_cores)
     }
 }
 
+// Reset perf counter for the specified core
 void reset_counter(int core_id)
 {
     ioctl(fd[core_id], PERF_EVENT_IOC_RESET, 0);
     //ioctl(fd[core_id], PERF_EVENT_IOC_ENABLE, 0);
 }
 
-// vet inte om det behöver vara en unsigned long long
+// TODO: unsigned long long might be unnecessary (avoid using unsigned integers)
+// Read perf counter for the specified core and return its value
 unsigned long long read_counter(int core_id)
 {
     unsigned long long rv;
@@ -64,6 +66,7 @@ unsigned long long read_counter(int core_id)
     return rv;
 }
 
+// Stop all perf counters
 void stop_counters()
 {
     for(int i = 0; i < num_fd; i++)
